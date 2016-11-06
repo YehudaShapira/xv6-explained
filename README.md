@@ -1,4 +1,6 @@
 # xv6-explained
 
-xv6 is a pain to learn.
-Hopefully, this will be something of a painkiller
+This project serves as an explanation for xv6.
+
+- Explanations.docx: General explanations of various stuff xv6 does, focusing on *why* rather than *how*.
+- xv6CodeExplained.docx: Actual documentation of the code
