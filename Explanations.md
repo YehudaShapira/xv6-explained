@@ -129,3 +129,94 @@ int $128    ; invokes system call. Always 128!
 ```
 
 The kernel has a vector with a bunch of pointers to functions (Yay, pointers!).
+
+###*Addresses*
+
+This one's a biggie. Hold on to your seatbelts, kids.
+
+Programs refer to memory addresses. They do this when they refer to a variable (that's right; once code's compiled, all mentions of the variable are turned into the variable's address (I think)), and whenever there is a loop or an if. Notice that the compiled code does not know where in the memory the program is going to be, and therefore these addresses must be relative to the program's actual address. Also, we'll want to make sure no evil program tries to access the memory of another program.
+
+So, each process has to have its "own" addresses, which it thinks are the actual addresses. It has *nothing* to do with the actual RAM, just with the *addresses* that the process knows and refers to. (**Process**, not **program**; this includes the kernel.)
+
+Behold! A sketch of what a process's addresses looks like in xv6:
+
+|-----------  
+| FFFF FFFF (4GB)  
+|  
+| ...  
+| All these addresses are used by kernel  
+| ...  
+|  
+| 8000 0000  
+|-----------  
+| 7FFF FFFF (2GB)  
+|  
+| ...  
+| All these addresses are used by process  
+| ...  
+|  
+| 0000 0000  
+|-----------  
+
+In order to pull off this trick, we use a hardware piece called the Address Translation Unit, which actually isn't officially called that.  
+Its real name is the MMU (Memory Management Unit), for some reason.
+
+The MMU is actually comprised of two units:
+
+1. Segmentation Unit
+
+2. Paging Unit.
+
+The MMU sits on the address bus between then CPU and the memory, and decides which actual addresses the CPU accesses when it reads and writes.
+Each of the smaller units (segmenataion and paging) can be turned on or off. Note that Paging can only be turned on if Segmentation is on. (We actually won't really use the Segmentation Unit in xv6).
+
+Addresses coming from CPU are called **virtual/logical addresses**. Once through the Segmentation Unit, they're called **linear addresses**. Once through the Paging Unit, they're **physical addresses**.  
+In short: CPU [virtual] -> Segmentation [linear] -> Paging [physical] -> RAM
+
+Here's a bunch of 16-bit registers that are used by the Segmentation Unit:
+
+* `CS` - **C**ode. This guy actually messes with our `EIP` register (that's the guy who points to the next command!).
+* `DS` - **D**ata. By default, messes with all registers except `EIP`, `ESP` and `EBP`. (In assembly, we can override the choice of messing register.)
+* `SS` - **S**tack. By default, messes with `ESP` and `EBP` registers.
+* `ES` 
+* `FS`
+* `GS`
+
+The address `EIP` points to after going through `CS` is written as `CS`:`EIP`.
+
+In the Segmentation Unit there is a register called GDTR. The kernel uses this to store the address of a table called GDT (Global Descriptor Table). Every row is 8 bytes, and row #0 is not used. It can have up to 8192 rows, but no more.
+
+The first two parts of each row are **Base** and **Limit**.
+
+When the Segmentation Unit receives and address, the CPU gives it an *index*. This index is written in one of the segmentation registers (`CS`, `DS`, ... `GS`), thusly:
+
+* Bits 0-1: permissions
+* Bit 2: "use GDT or LDT?" (Let's pretend this doesn't exist, because it does not interest us at all.)
+* Bits 4-15: The index
+
+The Segmentation Unit receives a logical address and uses the index to look at the GDT. Then:
+
+* If the logical address is greater than the `Limit`, crash!
+* Else, the Segmentation adds the `Base` to the logical address, and out comes a linear address.
+
+Note: In the past, the Segmentation Unit was used in order to make sure different processes had their own memory. For example, they could do this by making sure that each time the kernel changes a process, its segmentation regiesters would all point to an index that "belongs" to that process (and each row in the GDT would contain appropriate data). Another way this could be done would be by maintaining a seperate GDT for each process. Or maintaining a single row in the GDT and updating it each time we switch a process. There is no single correct way.
+
+Note that all the addresses used by each process must be consecutive (along the physical memory).
+
+In xv6, we don't want any of this.
+
+Therefore, we will make sure that the GDT `Limit` is set to max possible, and the `Base` is set to 0.
+
+In order to allow consecutive virtual addresses to be mapped to different areas in the physical memory, we use **paging**.
+
+In the Paging Unit, there is a register named `CR3` (Control Register 3), which points to the address of the Page Table (kinda like GDT). A row in the Page Table has a whole bunch of data, such as page address, "is valid", and some other friendly guys.
+
+When the Paging Unit receives a linear address, it acts thusly:
+
+* The left-side bits are used as an *index* (AKA "page number") for the Page Table. (There are 20 of these.)
+* In the matching row, if the "is valid" bit = 0, crash!
+* Those "page number" bits from the linear address are replaced by the actual page in our row (which is already *part* of the actual real live physical address)
+* The page is "glued" to the right-side bits of the linear address (you know, those that aren't the page number. There are 12 of these.)
+* Voila! We have in our hands a physical address.
+
+Note that each page can be in a totally different place in the physical memory. The pages can be scattered (in page-sized chunks) all along the RAM.
