@@ -220,3 +220,10 @@ When the Paging Unit receives a linear address, it acts thusly:
 * Voila! We have in our hands a physical address.
 
 Note that each page can be in a totally different place in the physical memory. The pages can be scattered (in page-sized chunks) all along the RAM.
+
+**Uh oh**:  
+Each row in the Page Table takes up 4 bytes (?).  
+A 2GB process will require 4MB somehow. I forgot how we reached this interesting mathematial conclusion; I need to check up on this data.  
+Anyway, we end up with quite a large Page Table, which kind of defeats the whole purpose of the Page Table. Well, not the *whole* purpose, but definitely some of it.
+
+**The solution**: The Page Table gets its very own Page Table!
