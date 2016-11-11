@@ -134,7 +134,12 @@ The kernel has a vector with a bunch of pointers to functions (Yay, pointers!).
 
 This one's a biggie. Hold on to your seatbelts, kids.
 
-Programs refer to memory addresses. They do this when they refer to a variable (that's right; once code's compiled, all mentions of the variable are turned into the variable's address (I think)), and whenever there is a loop or an if. Notice that the compiled code does not know where in the memory the program is going to be, and therefore these addresses must be relative to the program's actual address. Also, we'll want to make sure no evil program tries to access the memory of another program.
+Programs refer to memory addresses. They do this when they refer to a variable (that's right; once code's compiled, all mentions of the variable are turned into the variable's address). They do this in every `if` or loop. When the good old `EIP` register holds the address of the next instruction, it's referring to a memory address.
+
+There are two issues that arise from this:
+
+* The compiled code does not know where in the memory the program is going to be, and therefore these addresses must be relative to the program's actual address. (This is a problem with loops and ifs, not with the `EIP`.)
+* We'll want to make sure no evil program tries to access the memory of another program.
 
 So, each process has to have its "own" addresses, which it thinks are the actual addresses. It has *nothing* to do with the actual RAM, just with the *addresses* that the process knows and refers to. (**Process**, not **program**; this includes the kernel.)
 
@@ -209,21 +214,52 @@ Therefore, we will make sure that the GDT `Limit` is set to max possible, and th
 
 In order to allow consecutive virtual addresses to be mapped to different areas in the physical memory, we use **paging**.
 
-In the Paging Unit, there is a register named `CR3` (Control Register 3), which points to the address of the Page Table (kinda like GDT). A row in the Page Table has a whole bunch of data, such as page address, "is valid", and some other friendly guys.
+In the Paging Unit, there is a register named `CR3` (Control Register 3), which points to the **physical** address of the Page Table (kinda like GDT). A row in the Page Table has a whole bunch of data, such as page address, "is valid", and some other friendly guys.
 
 When the Paging Unit receives a linear address, it acts thusly:
 
 * The left-side bits are used as an *index* (AKA "page number") for the Page Table. (There are 20 of these.)
 * In the matching row, if the "is valid" bit = 0, crash!
+* (There are also "permission" bits, but let's ignore them for now.)
 * Those "page number" bits from the linear address are replaced by the actual page in our row (which is already *part* of the actual real live physical address)
 * The page is "glued" to the right-side bits of the linear address (you know, those that aren't the page number. There are 12 of these.)
 * Voila! We have in our hands a physical address.
 
-Note that each page can be in a totally different place in the physical memory. The pages can be scattered (in page-sized chunks) all along the RAM.
+Note that each page can be in a totally different place in the physical memory. The pages can be scattered (in page-sized chunks) all along the RAM.  
+Also note: Hardware demands that the 12 right-most bits of `CR3` be 0. (If not, the hardware'll zero 'em itself.)
 
 **Uh oh**:  
-Each row in the Page Table takes up 4 bytes (?).  
-A 2GB process will require 4MB somehow. I forgot how we reached this interesting mathematial conclusion; I need to check up on this data.  
-Anyway, we end up with quite a large Page Table, which kind of defeats the whole purpose of the Page Table. Well, not the *whole* purpose, but definitely some of it.
+Each row in the Page Table takes up 4KB (that's 12 bits).  
+The Page Table has 1024 rows.  
+4KB * 1024 = 4MB. That's 4 whole consecutive MBs. That's quite a large area in the memory, which kind of defeats the whole purpose of the Page Table. Well, not the *whole* purpose, but definitely some of it.
 
 **The solution**: The Page Table gets its very own Page Table!
+
+* Tirst (small) page table contains - in each row - the (physical) address of another (small) page table.
+* Each of the (small) 2nd-level page tables (which are scattered) contain actual page addresses.
+* So: instead of 20 bits for single index, we have 10 bits for 1st-level table index and 10 bits for 2nd-level table index.
+
+###**`1217 main`**
+
+In the beginning, we know that from `0000 0000` till `0009 FFFF` there are 640KB RAM.  
+From `000A 0000` till `000F FFFF` is the "I/O area" (384KB), which contains ROM and stuff we must not use (it belongs to the hardware).  
+From `0010 0000` (1MB) till `FF00 0000` (4GB - 1MB in total) there is, once again, usable RAM.  
+After that comes "I/O area 2".  
+
+(Why the 640KB, the break, and then the rest? Because in the olden days they thought no one would ever use more than 640KB.)
+
+Remember Mr. Boot? He loads xv6 to `0010 0000`.  
+By the time xv6 loads (and starts running `main`), we have the following setup:
+
+1. `ESP` register is pointing to a stack with 4KB, for xv6's use. (That's not a lot.)
+2. Segmentation Unit is ready, with a (temporaray) GDT that does no damage (first row inaccessible, and another two with 0 `Base` and max `Limit`.
+3. Paging Unit is ready, with a temporary page table. The paging table works thusly:
+
+    * Addresses from `800x xxxx` till `803x xxxx` are mapped to `000x xxxx` through `003x xxxx` repectively. (That is, the left-most bit is simply zeroed.)
+	* ALL the the above addresses have 1000000000b as their 10 left-most bits, so our 1st-level page table has row 512 (that's 1000000000b) as "valid", and all the rest marked as "not valid".
+	* Row 512 points to a single 2nd-level table.
+	* The 2nd-level table uses all 1024 of its rows (that's exactly the next 10 bits of our virtual addresses), so they're all marked as valid.
+	* Each row in 2nd-level table contains a value which - coincidentally - happens to be the exact same number as the row index.
+	
+Let's look at some sample virual address just to see how it all works:  
+`8024 56AB` -> `1000 0000 0010 0100 0101 0110 1010 1011` -> `1000 0000 00` (that's row 512) | `10 0100 0101` (that's row 581)  | `0110 1010 1011` (and that's the offset) -> row 581 in the 2nd-level table will turn `*1000 0000 00*10 0100 0101` to `*0000 0000 00*10 0100 0101`, which is exactly according to the mapping rule we mentioned a few lines ago.
