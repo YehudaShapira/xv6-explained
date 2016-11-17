@@ -146,21 +146,21 @@ So, each process has to have its "own" addresses, which it thinks are the actual
 Behold! A sketch of what a process's addresses looks like in xv6:
 
 |-----------  
-| FFFF FFFF (4GB)  
+| [0xFFFF FFFF] (4GB)  
 |  
 | ...  
 | All these addresses are used by kernel  
 | ...  
 |  
-| 8000 0000  
+| [0x8000 0000]  
 |-----------  
-| 7FFF FFFF (2GB)  
+| [0x7FFF FFFF] (2GB)  
 |  
 | ...  
 | All these addresses are used by process  
 | ...  
 |  
-| 0000 0000  
+| [0x0000 0000]  
 |-----------  
 
 In order to pull off this trick, we use a hardware piece called the Address Translation Unit, which actually isn't officially called that.  
@@ -239,27 +239,59 @@ The Page Table has 1024 rows.
 * Each of the (small) 2nd-level page tables (which are scattered) contain actual page addresses.
 * So: instead of 20 bits for single index, we have 10 bits for 1st-level table index and 10 bits for 2nd-level table index.
 
-###**`1217 main`**
+###*`1217 main`*
 
-In the beginning, we know that from `0000 0000` till `0009 FFFF` there are 640KB RAM.  
-From `000A 0000` till `000F FFFF` is the "I/O area" (384KB), which contains ROM and stuff we must not use (it belongs to the hardware).  
-From `0010 0000` (1MB) till `FF00 0000` (4GB - 1MB in total) there is, once again, usable RAM.  
+In the beginning, we know that from `[0x0000 0000]` till `[0x0009 FFFF]` there are 640KB RAM.  
+From `[0x000A 0000]` till `[0x000F FFFF]` is the "I/O area" (384KB), which contains ROM and stuff we must not use (it belongs to the hardware).  
+From `[0x0010 0000]` (1MB) till `[0xFF00 0000]` (4GB - 1MB in total) there is, once again, usable RAM.  
 After that comes "I/O area 2".  
 
 (Why the 640KB, the break, and then the rest? Because in the olden days they thought no one would ever use more than 640KB.)
 
-Remember Mr. Boot? He loads xv6 to `0010 0000`.  
+Remember Mr. Boot? He loads xv6 to `[0x0010 0000]`.  
 By the time xv6 loads (and starts running `main`), we have the following setup:
 
 1. `ESP` register is pointing to a stack with 4KB, for xv6's use. (That's not a lot.)
 2. Segmentation Unit is ready, with a (temporaray) GDT that does no damage (first row inaccessible, and another two with 0 `Base` and max `Limit`.
 3. Paging Unit is ready, with a temporary page table. The paging table works thusly:
 
-    * Addresses from `800x xxxx` till `803x xxxx` are mapped to `000x xxxx` through `003x xxxx` repectively. (That is, the left-most bit is simply zeroed.)
+    * Addresses from `[0x800- ----]` till `[0x803- ----]` are mapped to `[0x000- ----]` through `[0x003- ----]` repectively. (That is, the left-most bit is simply zeroed.)
 	* ALL the the above addresses have 1000000000b as their 10 left-most bits, so our 1st-level page table has row 512 (that's 1000000000b) as "valid", and all the rest marked as "not valid".
 	* Row 512 points to a single 2nd-level table.
 	* The 2nd-level table uses all 1024 of its rows (that's exactly the next 10 bits of our virtual addresses), so they're all marked as valid.
 	* Each row in 2nd-level table contains a value which - coincidentally - happens to be the exact same number as the row index.
 	
 Let's look at some sample virual address just to see how it all works:  
-`8024 56AB` -> `1000 0000 0010 0100 0101 0110 1010 1011` -> `1000 0000 00` (that's row 512) | `10 0100 0101` (that's row 581)  | `0110 1010 1011` (and that's the offset) -> row 581 in the 2nd-level table will turn `*1000 0000 00*10 0100 0101` to `*0000 0000 00*10 0100 0101`, which is exactly according to the mapping rule we mentioned a few lines ago.
+`[0x8024 56AB]` -> `[1000 0000 0010 0100 0101 0110 1010 1011]` -> `[1000 0000 00` (that's row 512) `10 0100 0101` (that's row 581) `0110 1010 1011` (and that's the offset) `]` -> row 581 in the 2nd-level table will turn `[1000 0000 0010 0100 0101` to `[0000 0000 0010 0100 0101`, which is exactly according to the mapping rule we mentioned a few lines ago.
+
+###*Free (available) pages*
+
+Processes need pages to be mapped to. Obviously, we want to make sure that we keep track of which page are available.  
+The free pages are managed by a **linked list**. This list is held by a global variable named `kmem`. Each item is s `run` struct, which contains only a pointer to the next guy.
+
+`kmem` also has a lock, which makes sure (we'll learn later how) that different processes don't work on the memory in the same time and mess it up. (An alternative would be to give each processor its own pages. However, that could cause some processors to run out of memory while another has spare. (There are ways to work around it.))
+
+`main` calls `kinit1` and `kinit2`, which call `freerange`, which calls `kfree`.  
+In `kfree`, we perform the following 3 sanity checks:
+
+* We're not in the middle of some page)
+* We're not trying to free part of the kernel
+* We're not pushing beyond the edge of the physical memory
+
+###*Building a page table*
+
+Let's examine what needs to be done (not necessarily in xv6) in order to make our very own paging table.
+
+Our table should be able to "translate" virtual address *va* to physical address *vp* according to some rule.  
+
+**Step 1**: Call `kalloc` and get a page for our table. (Save address in `pgdir`)
+
+**Step 2**: Call `memset` to clear entire page (thus marking all rows as invalid).
+
+**Step 3**: Create and clear subtable. (Save address in `pgtab`)
+
+**Step 4**: Figure out index in `pgdir` (using *va* & V2P function), write `pgtab` there, mark as valid.
+
+**Step 5**: Figure out index in `pgtab` (using *va* & V2P function), write *pa* there, mark as valid.
+
+**Step 6**: Set CR3 to point at `pgdir`, using V2P.
