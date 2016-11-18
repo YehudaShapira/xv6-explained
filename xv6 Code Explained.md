@@ -57,7 +57,7 @@ Frees the (single!) page that `v` points at.
 
 ###`2838 kalloc(void)`
 
-Removes a page from `kmem`, and returns its address.
+Removes a page from `kmem`, and returns its (virtual!) address.
 
 **2844-2846**: remove first free page from `kmem`
 
