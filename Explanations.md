@@ -13,6 +13,8 @@ I'm just jotting these down during class, hoping it more or less gives a picture
 
 Anyways, here we go.
 
+---
+
 ###*Kernel*
 When I say "kernel", I mean the operating system.
 This is the mother of all programs that hogs the computer to itself and manages all the other programs and how they access the computer resources (such as memory, registers, time (that is, who runs when), etc.).
@@ -146,21 +148,21 @@ So, each process has to have its "own" addresses, which it thinks are the actual
 Behold! A sketch of what a process's addresses looks like in xv6:
 
 |-----------  
-| [0xFFFF FFFF] (4GB)  
+| `[0xFFFF FFFF]` (4GB)  
 |  
 | ...  
 | All these addresses are used by kernel  
 | ...  
 |  
-| [0x8000 0000]  
+| `[0x8000 0000]`  
 |-----------  
-| [0x7FFF FFFF] (2GB)  
+| `[0x7FFF FFFF]` (2GB)  
 |  
 | ...  
 | All these addresses are used by process  
 | ...  
 |  
-| [0x0000 0000]  
+| `[0x0000 0000]`  
 |-----------  
 
 In order to pull off this trick, we use a hardware piece called the Address Translation Unit, which actually isn't officially called that.  
@@ -262,9 +264,9 @@ By the time xv6 loads (and starts running `main`), we have the following setup:
 	* Each row in 2nd-level table contains a value which - coincidentally - happens to be the exact same number as the row index.
 	
 Let's look at some sample virual address just to see how it all works:  
-`[0x8024 56AB]` -> `[1000 0000 0010 0100 0101 0110 1010 1011]` -> `[1000 0000 00` (that's row 512) `10 0100 0101` (that's row 581) `0110 1010 1011` (and that's the offset) `]` -> row 581 in the 2nd-level table will turn `[1000 0000 0010 0100 0101` to `[0000 0000 0010 0100 0101`, which is exactly according to the mapping rule we mentioned a few lines ago.
+`[0x8024 56AB]` -> `[1000 0000 0010 0100 0101 0110 1010 1011]` -> `[1000 0000 00` (that's row 512) `10 0100 0101` (that's row 581) `0110 1010 1011` (and that's the offset) `]` -> row 581 in the 2nd-level table will turn `[1000 0000 0010 0100 0101...]` to `[0000 0000 0010 0100 0101...]`, which is exactly according to the mapping rule we mentioned a few lines ago.
 
-###*Free (available) pages*
+###*Available pages (free!)*
 
 Processes need pages to be mapped to. Obviously, we want to make sure that we keep track of which page are available.  
 The free pages are managed by a **linked list**. This list is held by a global variable named `kmem`. Each item is s `run` struct, which contains only a pointer to the next guy.
@@ -274,7 +276,7 @@ The free pages are managed by a **linked list**. This list is held by a global v
 `main` calls `kinit1` and `kinit2`, which call `freerange`, which calls `kfree`.  
 In `kfree`, we perform the following 3 sanity checks:
 
-* We're not in the middle of some page)
+* We're not in the middle of some page
 * We're not trying to free part of the kernel
 * We're not pushing beyond the edge of the physical memory
 
@@ -284,14 +286,16 @@ Let's examine what needs to be done (not necessarily in xv6) in order to make ou
 
 Our table should be able to "translate" virtual address *va* to physical address *vp* according to some rule.  
 
-**Step 1**: Call `kalloc` and get a page for our table. (Save address in `pgdir`)
+**Step 1**: Call `kalloc` and get a page for our First Table. (Save address of new table in `pgdir`)
 
 **Step 2**: Call `memset` to clear entire page (thus marking all rows as invalid).
 
-**Step 3**: Create and clear subtable. (Save address in `pgtab`)
+**Step 3**: Do the following for **every single *va*** we want to map:
 
-**Step 4**: Figure out index in `pgdir` (using *va* & V2P function), write `pgtab` there, mark as valid.
+- **Step 3.1**: Create and clear subtable, and save address in `pgtab` (similar to what we did in steps 1 and 2).
 
-**Step 5**: Figure out index in `pgtab` (using *va* & V2P function), write *pa* there, mark as valid.
+- **Step 3.2**: Figure out index in `pgdir` (using *va* & V2P function), write `pgtab` there, mark as valid.
 
-**Step 6**: Set CR3 to point at `pgdir`, using V2P.
+- **Step 3.3**: Figure out index in `pgtab` (using *va* & V2P function), write *pa* there, mark as valid.
+
+**Step 4**: Set CR3 to point at `pgdir`, using `V2P`.
