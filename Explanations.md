@@ -147,23 +147,15 @@ So, each process has to have its "own" addresses, which it thinks are the actual
 
 Behold! A sketch of what a process's addresses looks like in xv6:
 
-|-----------  
-| `[0xFFFF FFFF]` (4GB)  
-|  
-| ...  
-| All these addresses are used by kernel  
-| ...  
-|  
-| `[0x8000 0000]`  
-|-----------  
-| `[0x7FFF FFFF]` (2GB)  
-|  
-| ...  
-| All these addresses are used by process  
-| ...  
-|  
-| `[0x0000 0000]`  
-|-----------  
+Address | Who uses this
+--- | ---
+`[0xFFFF FFFF]` | Kernel
+`[0xFFFF FFFE]` | Kernel
+... | Kernel
+`[0x8000 0000]` | **Kernel**
+`[0x7FFF FFFF]` | **Process**
+... | Process
+`[0x0000 0000]` | Process 
 
 In order to pull off this trick, we use a hardware piece called the Address Translation Unit, which actually isn't officially called that.  
 Its real name is the MMU (Memory Management Unit), for some reason.
@@ -237,18 +229,40 @@ The Page Table has 1024 rows.
 
 **The solution**: The Page Table gets its very own Page Table!
 
-* Tirst (small) page table contains - in each row - the (physical) address of another (small) page table.
+* First (small) page table contains - in each row - the (physical) address of another (small) page table.
 * Each of the (small) 2nd-level page tables (which are scattered) contain actual page addresses.
 * So: instead of 20 bits for single index, we have 10 bits for 1st-level table index and 10 bits for 2nd-level table index.
+
+Thus, a virtual address can be broken down like so:  
+`[i0][i1][offset]`
+
+* `i0` is the index of the First Table
+* `i1` is the index of a second table
+* `offset` is the offset
 
 ###*`1217 main`*
 
 In the beginning, we know that from `[0x0000 0000]` till `[0x0009 FFFF]` there are 640KB RAM.  
 From `[0x000A 0000]` till `[0x000F FFFF]` is the "I/O area" (384KB), which contains ROM and stuff we must not use (it belongs to the hardware).  
 From `[0x0010 0000]` (1MB) till `[0xFF00 0000]` (4GB - 1MB in total) there is, once again, usable RAM.  
-After that comes "I/O area 2".  
+After that comes "I/O area 2".
 
 (Why the 640KB, the break, and then the rest? Because in the olden days they thought no one would ever use more than 640KB.)
+
+Address | Who uses this
+--- | ---
+`[Who cares]` | I/O
+... | I/O
+`[0xFF00 0001]` | I/O
+`[0xFF00 0000]` | Usable RAM
+... | Usable RAM
+`[0x0010 0000]` | Usable RAM
+`[0x000F FFFF]` | I/O
+... | I/O
+`[0x000A 0000]` | I/O
+`[0x0009 FFFF]` | Usable RAM
+... | Usable RAM
+`[0x0000 0000]` | Usable RAM
 
 Remember Mr. Boot? He loads xv6 to `[0x0010 0000]`.  
 By the time xv6 loads (and starts running `main`), we have the following setup:
