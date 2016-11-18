@@ -299,8 +299,9 @@ In `kfree`, we perform the following 3 sanity checks:
 Let's examine what needs to be done (not necessarily in xv6) in order to make our very own paging table.
 
 Our table should be able to "translate" virtual address *va* to physical address *vp* according to some rule.  
+Note that we'll be using `V2P`, which is a hard-coded mother-function that translates **virtual** addresses to **physical** by subtracting `KERNBASE` (which equals `0x8000 0000`) from the virtual addresses.
 
-**Step 1**: Call `kalloc` and get a page for our First Table. (Save address of new table in `pgdir`)
+**Step 1**: Call `kalloc` and get a page for our First Table. (Save (virtual!) address of new table in `pgdir` variable)
 
 **Step 2**: Call `memset` to clear entire page (thus marking all rows as invalid).
 
