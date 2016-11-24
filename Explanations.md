@@ -299,18 +299,63 @@ In `kfree`, we perform the following 3 sanity checks:
 Let's examine what needs to be done (not necessarily in xv6) in order to make our very own paging table.
 
 Our table should be able to "translate" virtual address *va* to physical address *vp* according to some rule.  
-Note that we'll be using `V2P`, which is a hard-coded mother-function that translates **virtual** addresses to **physical** by subtracting `KERNBASE` (which equals `0x8000 0000`) from the virtual addresses.
+Note that we'll be using `v2p`, which is a hard-coded mother-function that translates **virtual** addresses to **physical** by subtracting `KERNBASE` (which equals `0x8000 0000`) from the virtual addresses.
 
 **Step 1**: Call `kalloc` and get a page for our First Table. (Save (virtual!) address of new table in `pgdir` variable)
 
 **Step 2**: Call `memset` to clear entire page (thus marking all rows as invalid).
 
-**Step 3**: Do the following for **every single *va*** we want to map:
+**Step 3**: Do the following for **every single _va_** we want to map:
 
-- **Step 3.1**: Create and clear subtable, and save address in `pgtab` (similar to what we did in steps 1 and 2).
+- **Step 3.1**: Create and clear subtable, and save address in `pgtab` (similar to what we did in steps 1 and 2). (SEE NOTE AFTER THIS LIST)  
 
-- **Step 3.2**: Figure out index in `pgdir` (using *va* & V2P function), write `pgtab` there, mark as valid.
+- **Step 3.2**: Figure out i0 (index in `pgdir`) (using *va* & `v2p` function), write `pgtab` there, mark as valid.
 
-- **Step 3.3**: Figure out index in `pgtab` (using *va* & V2P function), write *pa* there, mark as valid.
+- **Step 3.3**: Figure out i1 (index in `pgtab`) (using *va* & `v2p` function), write *pa* there, mark as valid.
 
-**Step 4**: Set CR3 to point at `pgdir`, using `V2P`.
+**Step 4**: Set CR3 to point at `pgdir`, using `v2p`.
+
+THE NOTE MENTIONED EARLIER: After we already have some subtables, we only need to create new subtables if the requested subtable does not exist yet.  
+How do we know whether it exists already? Simply by looking at the current i0 and seeing whether it's already marked as valid.
+
+ANOTHER NOTE: What if two different *va*->*vp* rules clash? xv6 will crash (deliberately).
+
+**For more details about how the kernel builds its mapping tables, please refer to [xv6 Code Explained](xv6 Code Explained.md) (`kvmalloc`).**
+
+###*Moar GDT stuff!*
+
+Remember how we said we'd make sure GDT has `base=0` (so it won't alter addresses) and `limit=max` (so it won't interfere)?  
+Well, it turns out the hardware still uses the GDT to check various user-mode/kernel-mode stuff.
+
+We need four rows in the GDT:
+
+1. Kernel-mode, can only execute and read
+2. Kernel-mode, can write
+3. User-mode, can only execute and write
+4. User-mode, can write.
+
+There is a macro named `SEG`, which helps us build all these annoying bits.
+
+Okay, that's enough of this.  
+Don't pretend you understand, because you don't and it doesn't matter.
+
+###*Per-CPU variables*
+
+We've got an array of CPU data, `cpus`.
+
+We can access specific SPU stuff via `cpus[MY_CPU]`.  
+In order to get current CPU identifier, we call `getcpu()`, which is slow.
+
+When we do this, we *MUST* stop interrupts from happening, to make sure we stay within the same CPU.
+
+Problem: Calling `getcpu()` is slow, and stopping (and then resuming) interrupts can be extremely slow.
+
+Solution: Instead of using `getcpu()`, we can use a special register in each CPU!
+
+Problem: Registers can be overriden by users.
+
+Solution: Special register that only kernel can use!
+
+Problem: *There are no such registers.*
+
+Solution: Cheating, using the GDT!
