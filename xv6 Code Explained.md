@@ -23,7 +23,7 @@ Sets up kernel stuff and starts running the first process.
 ###`2764 struct run`
 
 Represents a memory page.  
-A `run` points to the next available page\`run` (which is actually the *previous* page, because the first available is the last in the memory).
+A `run` points to the next available page/`run` (which is actually the *previous* page, because the first available is the last in the memory).
 
 ---
 
@@ -35,6 +35,8 @@ Points to the head of a list of free (that is, available) pages of memory.
 
 ###`2780 kinit1(void *vstart, void *vend)`
 
+Called by `main`.
+
 Frees a bunch of pages.  
 Also does some locking thing (I'll elaborate once we actually learn this stuff).  
 Used only when kernel starts up.
@@ -42,6 +44,8 @@ Used only when kernel starts up.
 ---
 
 ###`2788 kinit2(void *vstart, void *vend)`
+
+Called by `main`.
 
 Frees a bunch of pages.  
 Also does some locking thing (I'll elaborate once we actually learn this stuff).  
@@ -51,6 +55,8 @@ Used only when kernel starts up.
 
 ###`2801 freerange(void *vstart, void *vend)`
 
+Called by `kinit1` and `kinit2`.
+
 Frees a bunch of pages.
 
 **2804**: use PGROUNDUP  because `kinit1` in called to start where the kernel finished (which is not likely to end *exactly* at a page end).
@@ -58,6 +64,8 @@ Frees a bunch of pages.
 ---
 
 ###`2815 kfree (char *v)`
+
+Called by lots of different functions.
 
 Frees the (single!) page that `v` points at.  
 
@@ -71,6 +79,8 @@ Frees the (single!) page that `v` points at.
 
 ###`2838 kalloc(void)`
 
+Called by lots of different functions.
+
 Removes a page from `kmem`, and returns its (virtual!) address.
 
 **2844-2846**: remove first free page from `kmem`
@@ -80,6 +90,8 @@ Removes a page from `kmem`, and returns its (virtual!) address.
 ---
 
 ###`1757 kvmalloc(void)`
+
+Called by `main`.
 
 Builds new page table and makes CR3 point to it.
 
@@ -94,17 +106,19 @@ Builds new page table and makes CR3 point to it.
 Contains data of how kernel pages should look.  
 Used by `setupkvm` for mapping.
 
-Column 0: Virtual addresses  
-Column 1: Physical addresses start  
-Column 2: Physical addresses end  
-Column 3: Pages permissions
+**Column 0**: Virtual addresses  
+**Column 1**: Physical addresses start  
+**Column 2**: Physical addresses end  
+**Column 3**: Pages permissions
 
-**1730-1731**: The `data` variable is where the kernel's data start (*data* is plural, by the way).  
+**Note**: The `data` variable (used in lines 1730-1731 is where the kernel's data start (*data* is plural, by the way).  
 We do not know during compliation where this will be.
 
 ---
 
 ###`1737 setupkvm(void)`
+
+Called by lots of different functions.
 
 Sets up kernel virtual pages.
 
@@ -119,6 +133,8 @@ Sets up kernel virtual pages.
 ---
 
 ###`1679 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)`
+
+Called by lots of different functions.
 
 Creates translations from *`va`* (virtual address) to *`pa`* (physical address) in page table .
 
@@ -138,6 +154,8 @@ Creates translations from *`va`* (virtual address) to *`pa`* (physical address) 
 
 ###`1654 walkpgdir(pde_t *pgdir, const void *va, int alloc)`
 
+Called by lots of different functions.
+
 Looks at virtual address *`va`*,  
 finds where where it should be mapped to according to page table `pgdir`,  
 and returns the **virtual** address of the the *index* i1.
@@ -146,10 +164,10 @@ If there is no mapping, then:
 if `alloc`=1, mapping is created (and address is returned);  
 if `alloc`=0, return 0
 
-Some constants and macros:  
+Some constants and macros used here:  
 PDX - zeroes offset bits  
 PTX - uh... some more bit manipluations  
-PTE_P - valid bit  
+PTE_P - "valid" bit  
 PTE_W - "can write" bit  
 PTE_U - "available in usermode" bit  
 
