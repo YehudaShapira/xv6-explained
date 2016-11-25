@@ -320,7 +320,7 @@ How do we know whether it exists already? Simply by looking at the current i0 an
 
 ANOTHER NOTE: What if two different *va*->*vp* rules clash? xv6 will crash (deliberately).
 
-**For more details about how the kernel builds its mapping tables, please refer to [xv6 Code Explained](xv6 Code Explained.md) (`kvmalloc`).**
+**For more details about how the kernel builds its mapping tables, please refer to [xv6 Code Explained.md] (`kvmalloc`).**
 
 ###*Moar GDT stuff!*
 
@@ -343,19 +343,112 @@ Don't pretend you understand, because you don't and it doesn't matter.
 
 We've got an array of CPU data, `cpus`.
 
-We can access specific SPU stuff via `cpus[MY_CPU]`.  
+We can access specific SPU stuff via `cpus[SOME_CPU_IDENTIFIER]`.  
 In order to get current CPU identifier, we call `getcpu()`, which is slow.
 
 When we do this, we *MUST* stop interrupts from happening, to make sure we stay within the same CPU.
 
-Problem: Calling `getcpu()` is slow, and stopping (and then resuming) interrupts can be extremely slow.
+**Problem**: Calling `getcpu()` is slow, and stopping (and then resuming) interrupts can be extremely slow.
 
-Solution: Instead of using `getcpu()`, we can use a special register in each CPU!
+**Solution**: Instead of using `getcpu()`, we can use a special register in each CPU!
 
-Problem: Registers can be overriden by users.
+**Problem**: Registers can be overriden by users.
 
-Solution: Special register that only kernel can use!
+**Solution**: Special register that only kernel can use!
 
-Problem: *There are no such registers.*
+**Problem**: *There are no such registers.*
 
-Solution: Cheating, using the GDT!
+**Solution**: Cheating, using the GDT!
+
+So we have a list of GDTs, one per CPU.  
+When we initialize a CPU (just once, yeah?), we set up its very own GDT.  
+In this GDT, we add a *fifth* row (remember, we have four rows for kernel/user x read/write).  
+In this new row, we set the base to point at the place in the memory where the CPU data sits,
+and set the limit to 8 (because we have two important variables of CPU data, and each one take 4).
+
+We do this in `seginit()`.
+
+```C
+struct cpus *c = &cpus[getcpu()]; // costly, but used just once!
+
+// Set first four rows...
+c->gdt[SEG_KCODE]=SEG(STA_X|STA_R, 0, 0xffffffff, 0);
+c->gdt[SEG_KDATA]=SEG(STA_S, 0, 0xffffffff, 0);
+c->gdt[SEG_UCODE]=SEG(STA_X|STA_R, 0, 0xffffffff, DPL_USER);
+c->gdt[SEG_UDATA]=SEG(STA_S, 0, 0xffffffff, DPL_USER);
+
+// Set our special row
+c->gdt[SEG_KCPU]=SEG(STA_W, &c->proc, 8, 0);
+
+// Load the GDT
+lgdt(c->gdt, sizeof(c->gdt));
+
+// Set GS register to point at our fifth row in the GDT.
+loadgs(SEG_KCPU << 3); // shift 3 left so we get value and not permission bits.
+
+// Declare out two variables,
+// telling code generator to use gs register
+// whenever we access proc or cpu
+extern struct proc *proc asm("%gs:0");
+extern struct proc *cpu asm("%gs:4");
+
+proc = NULL;
+cpu = c;
+```
+
+So how does this affect our accessing per-CPU data?  
+Normally, if we do `proc = 3;`, then it would be complied to `movl $3, proc`.  
+However, now that we did that weird `extern struct proc *proc asm("%gs:0");` part, it is compiled to `movl $3, %gs:0`.
+
+**Therefore**, whenever in the code we call `proc` or `cpu`,
+we will automagically be referring to the address held in `GS:0` or `GS:4`,
+which happens to be the `proc` or `cpu` belonging to the specific CPU in which the code is executed.
+
+Note that variable `cpu` points to the variables `cpu` and `proc`, so calling `proc` is the same as (yet faster than) calling `cpu->proc`.  
+Note also that this means that calling `cpu->cpu->cpu->cpu` is the same as calling `cpu`.
+
+**Important note**: `GS` can be changed by code in user-mode.  
+So, every time there is an interrupt, we reload our value to `GS` using `loadgs(SEG_KCPU << 3);`. (Don't worry, we back up all user-mode's registers beforehand.)
+
+###*Processes*
+
+Every process has a struct `proc` that holds a bunch of its data:
+
+* `sz` - memory size
+* `pgdir` - its very own page table
+* `kstack` - small *kernel* stack (4KB), for data we don't want the process to touch and break (such as return address from system call)
+* `state`
+* `pid` - process ID
+* `parent` - parent process
+* `tf` - pointer to place where register values are saved during interrupt
+* `context` = another interrupt thing
+* `chan` - channel, marks what event process is waiting for (while sleeping). If none, then set to 0.
+* `killed` - 0 if not killed yet
+* `ofile` - vector of open files
+* `cwd` - current working directory (like when doing `cd...` in command)
+* `name`
+
+A process can move through its processes thusly:
+
+Embryo -> Runnable -> Running  
+Running -> Zombie  
+Running -> Sleeping (waiting for whatever event is marked in `chan`)  
+Running -> Runnable
+
+The processes are held in a struct named `ptable`, who has a vector of proceses named `proc`.
+
+###*Running The First Process*
+
+When running The First Process, we do the following in `userinit`:
+
+* `allocproc`: allocate `proc` structure
+ - Allocate process kernel stack
+ - Set up data on kernel stack (in the "trapframe" area) *as if the process already existed and went into kernel mode*. As a result, the data will be loaded to proc in due time
+* `setupkvm`: create page table (without knowing yet where to map user addresses (only kernel addresses))
+* `inituvm`:
+ - Allocate free page
+ - Copy code to page
+ - Update page table to map user memory
+* Fix the data on the kernel stack for some reason.
+
+Trapframe contains all register data.
