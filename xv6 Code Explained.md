@@ -16,7 +16,9 @@ Sets up kernel stuff and starts running the first process.
 
 **1220**: set up all kernel pages
 
-**1238**: set up the rest of the pages for general use (because until now we had just minimal)
+**1223**: set up segment tables and per-CPU data
+
+**1238**: set up the rest of the pages for general use (because until now we had just minimal, because other CPUs might not handle high addresses)
 
 ---
 
@@ -187,3 +189,44 @@ PTE_U - "available in usermode" bit
 **1670**: (i0 not valid) point i0 to `pgtab` and mark **i0** as valid, writable, usermodeable.
 
 **1672**: return address of appropriate row in `pgtab`
+
+---
+
+###`1616 seginit(void)`
+
+Called by `main`.
+
+Sets segmentation table so that it doesn't get in the way, for each CPU. 
+Adds extra row to each segementation table in order to guard CPU-specific data, makes `GS` resgister point to it, and makes `proc` and `cpu` actually point to `GS`.
+
+**1624-1628**: set up regular rows in segmentation table
+
+**1631-1634**: set up special row and `GS` register
+
+**1637-1638**: set up inital `proc` and `cpu` data
+
+---
+
+###`2252 userinint(void)`
+
+Called by `main`.
+
+Creates and sets up The First Process.
+
+**2257-2258**: allocate `proc` structure and set up data on kernel stack
+
+**2259-2260**: create page table with kernel addresses mapped
+
+**2261**: allocate free page, copy process code to page, map user addresses in page table
+
+**2262-2275**: fix data on kernel-stack
+
+---
+
+###`2205 allocproc(void)`
+
+Called by different functions.
+
+Allocates `proc` structure and sets up data on kernel stack.  
+**Returns** proc if succeeds, 0 if not.
+
