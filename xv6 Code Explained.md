@@ -120,7 +120,8 @@ We do not know during compliation where this will be.
 
 Called by lots of different functions.
 
-Sets up kernel virtual pages.
+Sets up kernel virtual pages.  
+**Returns** page table address if successful, 0 if not.
 
 **1742**: create outer `pgdir` page table
 
@@ -136,7 +137,8 @@ Sets up kernel virtual pages.
 
 Called by lots of different functions.
 
-Creates translations from *`va`* (virtual address) to *`pa`* (physical address) in page table .
+Creates translations from *`va`* (virtual address) to *`pa`* (physical address) in existing page table `pgdir`.  
+**Returns** 0 if successful, -1 if not.
 
 **1684**: get starting address
 
@@ -158,7 +160,8 @@ Called by lots of different functions.
 
 Looks at virtual address *`va`*,  
 finds where where it should be mapped to according to page table `pgdir`,  
-and returns the **virtual** address of the the *index* i1.
+and returns the **virtual** address of the the *index* i1.  
+**Returns** address if successful, 0 if not.
 
 If there is no mapping, then:  
 if `alloc`=1, mapping is created (and address is returned);  
