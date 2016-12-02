@@ -20,6 +20,10 @@ Sets up kernel stuff and starts running the first process.
 
 **1238**: set up the rest of the pages for general use (because until now we had just minimal, because other CPUs might not handle high addresses)
 
+**1239**: set up the First Process
+
+**1241**: run the scheduler (and the First Process)
+
 ---
 
 ###`2764 struct run`
@@ -37,37 +41,39 @@ Points to the head of a list of free (that is, available) pages of memory.
 
 ###`2780 kinit1(void *vstart, void *vend)`
 
-Called by `main`.
-
 Frees a bunch of pages.  
 Also does some locking thing (I'll elaborate once we actually learn this stuff).  
 Used only when kernel starts up.
+
+Called by `main`.
 
 ---
 
 ###`2788 kinit2(void *vstart, void *vend)`
 
-Called by `main`.
-
 Frees a bunch of pages.  
 Also does some locking thing (I'll elaborate once we actually learn this stuff).  
 Used only when kernel starts up.
+
+Called by `main`.
 
 ---
 
 ###`2801 freerange(void *vstart, void *vend)`
 
-Called by `kinit1` and `kinit2`.
-
 Frees a bunch of pages.
 
 **2804**: use PGROUNDUP  because `kinit1` in called to start where the kernel finished (which is not likely to end *exactly* at a page end).
 
+Called by:
+
+* `kinit1`
+
+* `kinit2`
+
 ---
 
 ###`2815 kfree (char *v)`
-
-Called by lots of different functions.
 
 Frees the (single!) page that `v` points at.  
 
@@ -77,11 +83,25 @@ Frees the (single!) page that `v` points at.
 
 **2827-2829**: insert our page into the beginning of `kmem` (a linked list with all available pages)
 
+Called by:
+
+* `deallocuvm`
+
+* `freevm`
+
+* `fork`
+
+* `wait`
+
+* `freerange`
+
+* `pipealloc`
+
+* `pipeclose`
+
 ---
 
 ###`2838 kalloc(void)`
-
-Called by lots of different functions.
 
 Removes a page from `kmem`, and returns its (virtual!) address.
 
@@ -89,17 +109,35 @@ Removes a page from `kmem`, and returns its (virtual!) address.
 
 **2849**: return address
 
+Called by:
+
+* `startothers`
+
+* `walkpgdir`
+
+* `setupkvm`
+
+* `inituvm`
+
+* `allocuvm`
+
+* `copyuvm`
+
+* `allocproc`
+
+* `pipealloc`
+
 ---
 
 ###`1757 kvmalloc(void)`
-
-Called by `main`.
 
 Builds new page table and makes CR3 point to it.
 
 **1759**: make table and get its address
 
 **1760**: make CR3 point to returned address
+
+Called by `main`.
 
 ---
 
@@ -120,8 +158,6 @@ We do not know during compliation where this will be.
 
 ###`1737 setupkvm(void)`
 
-Called by lots of different functions.
-
 Sets up kernel virtual pages.  
 **Returns** page table address if successful, 0 if not.
 
@@ -133,11 +169,19 @@ Sets up kernel virtual pages.
 
 **1747-1750**: loop over `kmap` and map pages using `mappages`
 
+Called by:
+
+* `kvmalloc`
+
+* `copyuvm`
+
+* `userinit`
+
+* `exec`
+
 ---
 
 ###`1679 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)`
-
-Called by lots of different functions.
 
 Creates translations from *`va`* (virtual address) to *`pa`* (physical address) in existing page table `pgdir`.  
 **Returns** 0 if successful, -1 if not.
@@ -154,11 +198,11 @@ Creates translations from *`va`* (virtual address) to *`pa`* (physical address) 
 
 **1691**: write *`pa`* in i1 and mark as valid, with required permissions
 
+Called by lots of different functions.
+
 ---
 
 ###`1654 walkpgdir(pde_t *pgdir, const void *va, int alloc)`
-
-Called by lots of different functions.
 
 Looks at virtual address *`va`*,  
 finds where where it should be mapped to according to page table `pgdir`,  
@@ -190,11 +234,11 @@ PTE_U - "available in usermode" bit
 
 **1672**: return address of appropriate row in `pgtab`
 
+Called by lots of different functions.
+
 ---
 
 ###`1616 seginit(void)`
-
-Called by `main`.
 
 Sets segmentation table so that it doesn't get in the way, for each CPU. 
 Adds extra row to each segementation table in order to guard CPU-specific data, makes `GS` resgister point to it, and makes `proc` and `cpu` actually point to `GS`.
@@ -205,28 +249,117 @@ Adds extra row to each segementation table in order to guard CPU-specific data, 
 
 **1637-1638**: set up inital `proc` and `cpu` data
 
+Called by `main`.
+
 ---
 
 ###`2252 userinint(void)`
 
-Called by `main`.
-
 Creates and sets up The First Process.
 
-**2257-2258**: allocate `proc` structure and set up data on kernel stack
+**2257**: allocate `proc` structure and set up data on kernel stack
+
+**2258**: save proc in `initproc`, so we'll always remember who the First Process is
 
 **2259-2260**: create page table with kernel addresses mapped
 
 **2261**: allocate free page, copy process code to page, map user addresses in page table
 
-**2262-2275**: fix data on kernel-stack
+**2262-2275**: fix data on kernel-stack, *as if* it were stored there because of an interrupt
+
+- **2264**: make sure we'll be in usermode when process starts
+
+- **2270**: make sure process will start in address 0
+
+Called by `main`.
 
 ---
 
 ###`2205 allocproc(void)`
 
-Called by different functions.
-
 Allocates `proc` structure and sets up data on kernel stack.  
 **Returns** proc if succeeds, 0 if not.
 
+**2211-2213**: find first unused `proc` structure
+
+**2217-2219**: set to EMBRYO state and give `pid`
+
+**2223-2226**: allocate and assign kernel stack for process
+
+**2227**: set stack pointer to bottom of stack (stack bottom is highest address in stack)
+
+**2230-2231**: make room on stack for `trapframe`
+
+**2235-2239**: make room on stack for `context`
+
+**2240-2241**: set `context`, setting `context.eip` to function `forkret`
+
+Called by different functions.
+
+---
+
+###`1803 inituvm(pde_t *pgdir, char *init, uint sz)`
+
+Allocates and maps single page (4KB), and fills it with with program code.
+
+**1807-1808**: make sure entire program code fits in single page
+
+**1809**: allocate page
+
+**1810**: clear page
+
+**1811**: map pages in page table `pgdir` (using `v2p`, because we know what memory this is, because this is the First Process, which the kernel always creates on startup)
+
+**1812**: copy the code
+
+Called by `userinit`.
+
+---
+
+###`2458 scheduler(void)`
+
+Loops over all processes (in each CPU), finds a runnable process, and runs it.  
+Loops for ever and ever.
+
+**2468-2470**: find first available process
+
+**2475**: set *per-CPU* variable `proc` to point to current running process
+
+**2476**: set up process's kernel stack, and switch to its page table
+
+**2477**: mark process as running
+
+**2478**: save current registers (including where to continue on scheduler) and load process's registers, handing the stage over to the process
+
+**2479**: now that process is switching back to scheduler, switch back to kernel registers and Page Table
+
+**2483**: set per-CPU variable `proc` back to 0
+
+Called by different functions.
+
+---
+
+###`1773 switchuvm(struct proc *p)`
+
+Perpares kernel-stack of process (that is, makes `tr` register indirectly point to it), and loads process's Page Table to `cr3`.
+
+**1776-1779**: set up `tr` register and `SEG_TSS` section in GDT end up magically (don't ask how) referring us to top of process's kernel stack
+
+---
+
+###`swtch(struct context **old, struct context *new)`
+
+Saves current register context in `old`, then loads the register context from `new`.  
+Basically gives control to new process.
+
+**2709**: set `eax` to contain address of `cpu->scheduler`
+
+**2710**: set `edx` to contain `proc->context`
+
+**2713-2716**: push `ebp`, `ebx`, `esi`, `edi` onto `old` stack
+
+**2719**: copy value of `esp` to address held in `eax`, which happens to be (see line **2709**) `cpu->scheduler`, so that now the CPU's `scheduler` field actually points to the bottom of our stack!
+
+**2720**: save value of `edx` in `esp`, so that now `esp` is pointing to the bottom of `proc->context`, **so that now we are in the `new` context instead of the `old`**
+
+**2723-2726**: pop `edi`, `esi`, `ebx`, `ebp` from `new` stack onto the actual registers
