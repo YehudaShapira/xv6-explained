@@ -437,7 +437,7 @@ Running -> Runnable
 
 The processes are held in a struct named `ptable`, who has a vector of proceses named `proc`.
 
-###*Running The First Process*
+###*Preparing the First Process*
 
 When running The First Process, we do the following in `userinit`:
 
@@ -452,3 +452,84 @@ When running The First Process, we do the following in `userinit`:
 * Fix the data on the kernel stack for some reason.
 
 Trapframe contains all register data.
+
+When we return from an interrupt (or, in our case, start the process for the first time), we do the following:
+
+1. Pop the first 4 values to their appropriate registers
+2. Pop `eip` field to `eip` register (now `eip` register is pointing to `forkret` function)
+3. Goto `forkret` function, which (somehow) takes us to the next guy in the stack...
+4. ...Trapret which pops another whole bunch of values from the stack to the registers
+5. And so on. We end up with all registers holding good values, and `eip` pointing to 0.
+
+###*The First Process*
+
+All it does it execute the program "init" (with the arguments {"/init", 0} (the 0 is to mark the end of the list)).
+
+This is how the code *would* have looked like if it were written in c:
+
+```c
+char *argv[] = {"/init", 0};
+main() {
+	exec(argv[0], argv);
+	for (;;) exit();
+}
+```
+
+...But it's not written in c.  
+It's written in assembly.
+
+Here's the arguments code:
+
+```Assembly
+# these are the arguments:
+
+init:
+    .string "/init\0"
+ 
+    .p2align 2
+argv:
+    .long init
+    .long 0
+```
+
+...And here's the *code* code:
+
+```Assembly
+    .globl start
+start:
+    pushl	$argv ; push second argument
+	pushl	$init ; push first argument
+	pushl	$0
+	movl	$SYS_exec, %eax ; load the canons (perpare to call "exec" system-call)
+	int	$T_SYSCALL ; FIRE!
+	
+# once end up back here, we need to quit.
+exit:
+	movl	$SYS_exit, %eax
+	int	$T_SYSCALL
+	jmp	exit
+```
+
+So we have this code, but we need to load it during `inituvm`.  
+This is done in the script in the **initcode.S** file, which compiles that code to binary and shoves it all into the data section, with the exact same labels that are used in `inituvm`.
+
+###*Actually running the First Process*
+
+This is done in `mpmain`, which calls the scheduler, which loops over process tables and runs processes.
+
+Since at this point there's only one process at this point, it's the only one that'll run.
+
+###*Accessing process's kernel stack during interrupt*
+
+When we're in user-mode and there's an interrupt, the kernel needs its own stack on the process to push real data onto it (before leaving the process).
+
+We need this kernel-stack to be accessable only by the kernel.
+
+The hardware supports this, with a magnificent Rube Goldberg machine:
+
+* `tr` register can only be accessed in kernel-mode
+* `tr` contains `SEG_TSS`, which points to special place in GDT
+* special place in GDT contains address and size of some weird struct
+* weird struct contains field `esp0`, which actually (finally) points to top of process's kernel stack
+
+So during `switchuvm` we set up this whole thing, so that in due time the kernel (and only the kernel) can access its stack on the proc.
