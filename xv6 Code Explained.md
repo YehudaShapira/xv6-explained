@@ -198,7 +198,15 @@ Creates translations from *`va`* (virtual address) to *`pa`* (physical address) 
 
 **1691**: write *`pa`* in i1 and mark as valid, with required permissions
 
-Called by lots of different functions.
+Called by:
+
+* `setupkvm`
+
+* `inituvm`
+
+* `allocuvm`
+
+* `copyuvm`
 
 ---
 
@@ -234,7 +242,19 @@ PTE_U - "available in usermode" bit
 
 **1672**: return address of appropriate row in `pgtab`
 
-Called by lots of different functions.
+Called by:
+
+* `mappages`
+
+* `loaduvm`
+
+* `deallocuvm`
+
+* `clearpteu`
+
+* `copyuvm`
+
+* `uva2ka`
 
 ---
 
@@ -294,7 +314,11 @@ Allocates `proc` structure and sets up data on kernel stack.
 
 **2240-2241**: set `context`, setting `context.eip` to function `forkret`
 
-Called by different functions.
+Called by:
+
+* `userinit`
+
+* `fork`
 
 ---
 
@@ -335,7 +359,7 @@ Loops for ever and ever.
 
 **2483**: set per-CPU variable `proc` back to 0
 
-Called by different functions.
+Called by `mpmain`.
 
 ---
 
@@ -344,6 +368,14 @@ Called by different functions.
 Perpares kernel-stack of process (that is, makes `tr` register indirectly point to it), and loads process's Page Table to `cr3`.
 
 **1776-1779**: set up `tr` register and `SEG_TSS` section in GDT end up magically (don't ask how) referring us to top of process's kernel stack
+
+Called by:
+
+* `growproc`
+
+* `scheduler`
+
+* `exec`
 
 ---
 
@@ -363,3 +395,11 @@ Basically gives control to new process.
 **2720**: save value of `edx` in `esp`, so that now `esp` is pointing to the bottom of `proc->context`, **so that now we are in the `new` context instead of the `old`**
 
 **2723-2726**: pop `edi`, `esi`, `ebx`, `ebp` from `new` stack onto the actual registers
+
+Called by:
+
+* `scheduler`
+
+* `sched`
+
+---
