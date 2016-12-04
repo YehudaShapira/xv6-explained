@@ -45,7 +45,7 @@ Frees a bunch of pages.
 Also does some locking thing (I'll elaborate once we actually learn this stuff).  
 Used only when kernel starts up.
 
-Called by `main`.
+Called by [`main`](#1217-mainvoid).
 
 ---
 
@@ -55,7 +55,7 @@ Frees a bunch of pages.
 Also does some locking thing (I'll elaborate once we actually learn this stuff).  
 Used only when kernel starts up.
 
-Called by `main`.
+Called by [`main`](#1217-mainvoid).
 
 ---
 
@@ -67,9 +67,9 @@ Frees a bunch of pages.
 
 Called by:
 
-* `kinit1`
+* [`kinit1`](#2780-kinit1void-vstart-void-vend)
 
-* `kinit2`
+* [`kinit2`](#2788-kinit2void-vstart-void-vend)
 
 ---
 
@@ -93,7 +93,7 @@ Called by:
 
 * `wait`
 
-* `freerange`
+* [`freerange`](#2801-freerangevoid-vstart-void-vend)
 
 * `pipealloc`
 
@@ -137,7 +137,7 @@ Builds new page table and makes CR3 point to it.
 
 **1760**: make CR3 point to returned address
 
-Called by `main`.
+Called by [`main`](#1217-mainvoid).
 
 ---
 
@@ -175,7 +175,7 @@ Called by:
 
 * `copyuvm`
 
-* `userinit`
+* [`userinit`](#2252-userinintvoid)
 
 * `exec`
 
@@ -269,7 +269,7 @@ Adds extra row to each segementation table in order to guard CPU-specific data, 
 
 **1637-1638**: set up inital `proc` and `cpu` data
 
-Called by `main`.
+Called by [`main`](#1217-mainvoid).
 
 ---
 
@@ -291,7 +291,7 @@ Creates and sets up The First Process.
 
 - **2270**: make sure process will start in address 0
 
-Called by `main`.
+Called by [`main`](#1217-mainvoid).
 
 ---
 
@@ -316,7 +316,7 @@ Allocates `proc` structure and sets up data on kernel stack.
 
 Called by:
 
-* `userinit`
+* [`userinit`](#2252-userinintvoid)
 
 * `fork`
 
@@ -336,7 +336,7 @@ Allocates and maps single page (4KB), and fills it with with program code.
 
 **1812**: copy the code
 
-Called by `userinit`.
+Called by [`userinit`](#2252-userinintvoid).
 
 ---
 
@@ -373,7 +373,7 @@ Called by:
 
 * `growproc`
 
-* `scheduler`
+* [`scheduler`](#2458-schedulervoid)
 
 * `exec`
 
@@ -398,7 +398,7 @@ Basically gives control to new process.
 
 Called by:
 
-* `scheduler`
+* [`scheduler`](#2458-schedulervoid)
 
 * `sched`
 
