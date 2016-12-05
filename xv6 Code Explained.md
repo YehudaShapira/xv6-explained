@@ -113,17 +113,17 @@ Called by:
 
 * `startothers`
 
-* `walkpgdir`
+* [`walkpgdir`](#1654-walkpgdirpde_t-pgdir-const-void-va-int-alloc)
 
-* `setupkvm`
+* [`setupkvm`](#1737-setupkvmvoid)
 
-* `inituvm`
+* [`inituvm`](#1803-inituvmpde_t-pgdir-char-init-uint-sz)
 
 * `allocuvm`
 
 * `copyuvm`
 
-* `allocproc`
+* [`allocproc`](#2205-allocprocvoid)
 
 * `pipealloc`
 
@@ -171,7 +171,7 @@ Sets up kernel virtual pages.
 
 Called by:
 
-* `kvmalloc`
+* [`kvmalloc`](#1757-kvmallocvoid)
 
 * `copyuvm`
 
@@ -200,9 +200,9 @@ Creates translations from *`va`* (virtual address) to *`pa`* (physical address) 
 
 Called by:
 
-* `setupkvm`
+* [`setupkvm`](#1737-setupkvmvoid)
 
-* `inituvm`
+* [`inituvm`](#1803-inituvmpde_t-pgdir-char-init-uint-sz)
 
 * `allocuvm`
 
@@ -244,7 +244,7 @@ PTE_U - "available in usermode" bit
 
 Called by:
 
-* `mappages`
+* [`mappages`](#1679-mappagespde_t-pgdir-void-va-uint-size-uint-pa-int-perm)
 
 * `loaduvm`
 
