@@ -533,3 +533,113 @@ The hardware supports this, with a magnificent Rube Goldberg machine:
 * weird struct contains field `esp0`, which actually (finally) points to top of process's kernel stack
 
 So during `switchuvm` we set up this whole thing, so that in due time the kernel (and only the kernel) can access its stack on the proc.
+
+###*Locks - the problem*
+
+Because we have multiple CPUs, we need to make sure two CPUs don't both grab the same data (such as the same `proc` struct during `allocproc`, or the same page during `kalloc`).  
+This could (theoretically) even happen with a single CPU, because of interrupts.
+
+###*Locks - a possible solution (just for interrupts)*
+
+We can block interrupts (!) from happening by setting the `IF` bit in `eflags` register to 0.  
+This can be controlled (in kernel-mode, yes?) using the assembly commands:
+
+* `cli` (clears bit)
+* `sti` (sets bit to 1)
+
+(Also, the entire `eflags` register can be pushed into `eax` using some other assembly command.)
+
+So each time we want to do something unsafe, we can do:
+
+```C
+cli();
+something_dangerous();
+sti();
+```
+
+...But this is still dangerous, because of cases such as the following:
+
+```C
+function b() {
+	cli();
+	// ...
+	sti();
+}
+
+function a() {
+	cli();
+	b(); // at the end of this we set sti()!
+	// ... Uh oh. We're open to interrupts!
+	sti();
+}
+```
+
+###*Locks - an actual solution (just for interrupts)*
+
+**Solution**: Keep track of how many times we called `cli()`, so that `sti()` only releases if down to 0.  
+We can do this by wrapping all `cli()`s with `pushcli()` and `sti()`s with `popcli()`.  
+In `popcli()`, if our count reaches 0, we don't automatically call `sti()`, but revert to the **previous setting**.
+
+```C
+function b() {
+	pushcli();
+	// ...
+	popcli();
+}
+
+function a() {
+	pushcli();
+	b(); // at the end of this we DO NOT set sti()
+	// ... the counter is still 1
+	popcli(); // NOW the counter became 0, so now we call cli().
+}
+```
+
+(Note that each CPU runs `pushcli()` and `popcli()` separately for each CPU.)
+
+###*Locks - an actual solution (for multiple CPUs)*
+
+There is a magical assembly word, `lock`.  
+Usage example:
+
+```Assembly
+lock ; xchgl mem, reg
+```
+
+If `lock` is added to different commands run by different CPUs, then the `lock`ed commands will execute *serially*.
+
+Using this, the following c call:
+
+```c
+old = xchg(&lock, b);
+```
+
+...Does the following:
+
+1. Sets old = lock
+2. Sets lock = b (but only if not locked by someone else!)
+
+How on earth does this help us?
+
+I'll tell you how!
+
+We have a struct called `spinlock`, which holds all kinds of locking data.  
+In the function `acquire`, we do the following:
+
+```C
+acquire(struct spinlock *lk) {
+	pushcli(); // disable interrupts in this CPU, to avoid deadlocks
+	while(xchg(&lk->locked, 1) != 0);
+}
+```
+
+`xchg` will always return the *existing* value of `&lk->locked`, so if it's already locked we'll loop until it's released.
+
+In `release`, we do the following:
+
+```C
+release (struct spinlock*lk) {
+	xchg(&lk->locked, 0);
+	popcli();
+}
+```
