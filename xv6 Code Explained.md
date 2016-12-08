@@ -379,7 +379,7 @@ Called by:
 
 ---
 
-###`swtch(struct context **old, struct context *new)`
+###`2708 swtch(struct context **old, struct context *new)`
 
 Saves current register context in `old`, then loads the register context from `new`.  
 Basically gives control to new process.
@@ -401,5 +401,48 @@ Called by:
 * [`scheduler`](#2458-schedulervoid)
 
 * `sched`
+
+---
+
+###`1555 pushcli(void)`
+
+Saves state of `eflags` register's `IF` bit (that is, the current state of "listen to interrupts?" bit),  
+increments the "how many times did we choose to ignore interrupts" counter,  
+and clears the "listen to interrups" bit.
+
+**1561-1562**: save initial state of bit in `interna` var (FL_IF is the location of our bit)
+
+Called by:
+
+* [`acquire`](#1474-acquirestuct-spinlock-lk)
+
+* [`switchuvm`](#1773-switchuvmstruct-proc-p)
+
+---
+
+###`1566 popcli(void)`
+
+Decrements the "how many times did we choose to ignore interrupts" counter,  
+and if it reaches 0 then sets the "listen to interrups" bit to whatever it was before the very first `pushcli` was ever called.
+
+**1572-1573**: only set our bit if `interna` (initial bit value) was set
+
+Called by:
+
+* [`release`](#1502-releasestruct-spinlock-lk)
+
+* [`switchuvm`](#1773-switchuvmstruct-proc-p)
+
+---
+
+###`1474 acquire(struct spinlock *lk)`
+
+Loops over spinlock until lock is acquired (exclusively by current CPU).
+
+---
+
+###`1502 release(struct spinlock *lk)`
+
+Releases spinlock from being held by current CPU.
 
 ---
