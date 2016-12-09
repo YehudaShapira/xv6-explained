@@ -345,6 +345,8 @@ Called by [`userinit`](#2252-userinintvoid).
 Loops over all processes (in each CPU), finds a runnable process, and runs it.  
 Loops for ever and ever.
 
+**2467**: lock process table, to prevent multiple CPUs from grabbing same process
+
 **2468-2470**: find first available process
 
 **2475**: set *per-CPU* variable `proc` to point to current running process
@@ -353,11 +355,14 @@ Loops for ever and ever.
 
 **2477**: mark process as running
 
-**2478**: save current registers (including where to continue on scheduler) and load process's registers, handing the stage over to the process
+**2478**: save current registers (including where to continue on scheduler) and load process's registers, handing the stage over to the process  
+(NOTE: the running process is responsible to release the process table lock (to enable interrupts) and later release it.)
 
 **2479**: now that process is switching back to scheduler, switch back to kernel registers and Page Table
 
 **2483**: set per-CPU variable `proc` back to 0
+
+**2485**: release process table, allowing other CPUs to grab processes (just in case 
 
 Called by `mpmain`.
 
@@ -400,9 +405,57 @@ Called by:
 
 * [`scheduler`](#2458-schedulervoid)
 
-* `sched`
+* [`sched`](#2504-schedvoid)
 
 ---
+
+###`2503 sched(void)`
+
+Switches back `scheduler` to return from a process that had enough running.
+
+Called by:
+
+* `exit`
+
+* [`yield`](#2522-yieldvoid)
+
+* `sleep`
+
+---
+
+###`2522 yield(void)`
+
+Gives up the CPU from a running process.
+
+**2524**: re-lock the process table for scheduler
+
+**2525**: make self as not running
+
+**2526**: switch back to scheduler
+
+**2527**: after scheduler re-ran process, re-ealease process table to enable interrupts
+
+Called by `trap`.
+
+---
+
+###`2553 sleep(void *chan, struct spinlock *lk)`
+
+Makes process sleep until `chan` event occurs.
+
+**2568**: lock process table in order to set sleeping state safely
+
+**2569**: now that process table is locked, release `lk`
+
+**2573-2574**: set up sleeping state (and alarm clock)
+
+**2575**: return to scheduler until the event manager marks process as runnable
+
+**2578**: clean up
+
+**2582**: release process table
+
+**2583**: lock `lk` once again
 
 ###`1555 pushcli(void)`
 
