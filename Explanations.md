@@ -643,3 +643,55 @@ release (struct spinlock*lk) {
 	popcli();
 }
 ```
+
+###*How locks are managed during `scheduler`*
+
+When `scheduler` searches for RUNNABLE procs, it `acquire`s a lock on the process table.  
+This is in order to make sure that `scheduler`s on *other* CPUs don't grab the same process we just did.
+
+The lock is held even as we switch to the process; it's the process's responsibility to release the lock (in order to allow interrupts).  
+Likewise, the process must re-lock the process table before returning to `scheduler`.
+
+Each lock is re-released by the next process that runs, and then re-re-locked.
+
+The final release is done by `scheduler` once there are no runnable processes left.
+
+###*Sleep*
+
+When a process needs a resource in order to continue (such as disc, input or whatever), it must call `sleep` where it marks itself (`proc->chan`) as waiting for the wanted event, sets its `state` to SLEEPING, and returns to `scheduler`.
+
+When the Event Manager (whom we never heard of yet) sees that the event occurs, it marks the proc as RUNNABLE once again.
+
+Note that the process needs to see that its resource is still available (and hasn't been make unavailable again by the time it woke up) before continuing. If the resource is unavailable again, it should go back to sleep (if it knows what's good for it).
+
+`sleep` also demands a locked `spinlock` for a weird reason we don't know yet.  
+It replaces the locking from *that* lock to the process table (unless they are the same lock, of course).  
+Once done, it releases the process table and re-locks the supplied `spinlock`.  
+We'll get back to you folks on this one once we understand why on earth this is needed.
+
+###*Interrupts*
+
+There are two basic types of interrupts: internal and external.
+
+We can decide whether to listen to external interrupts using `sti` and `cli` which sets or clears the `IF` bit on the `eflags` register.  
+We cannot ignore internal interrupts.
+
+Interrupts can only occur *between* commands.
+
+During an interrupt, the CPU needs to know what kind of interrupt it is. These range between 0-255, when 0-31 are reserved by Intel for all kinds of hardware stuff.
+
+In order to handle these interrupts, the CPU needs a table with pointers to functions that handle 'em (with the index being the interupt number).  
+This table is called IDT, and the register that points to it is `IDTR`.
+
+Each row has a whole row of 64 bits as a descriptor.  
+These include:
+
+* `offset` - the actual address of the function (this guy is loaded to `eip`)
+* `selector` - loaded to `cs`
+* `type` - 1 for trap gate, 0 for interrupt gate (if interrupt, we disable other interrupts)
+
+Before an interrupt call, the kernel must push `eflags`,`cs` and `eip` (so we'll have them again after the interrupt).  
+After the interrupt, the kernel needs to pop these guys again.
+
+Reminder: the kernel stack's address is saved in a `tss` structure, which is saved in the GDT, in the index held by `tr` register.  
+Therefore: the kernel needs to set this before calling an iterrupt.
