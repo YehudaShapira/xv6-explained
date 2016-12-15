@@ -530,7 +530,7 @@ The hardware supports this, with a magnificent Rube Goldberg machine:
 * `%tr` register can only be accessed in kernel-mode
 * `%tr` contains `SEG_TSS`, which points to special place in GDT
 * special place in GDT contains address and size of some weird struct
-* weird struct contains field `esp0`, which actually (finally) points to top of process's kernel stack
+* weird `TSS` struct contains field `esp0`, which actually (finally) points to top of process's kernel stack (and `ss0` with stack size)
 
 So during `switchuvm` we set up this whole thing, so that in due time the kernel (and only the kernel) can access its stack on the proc.
 
@@ -669,11 +669,11 @@ It replaces the locking from *that* lock to the process table (unless they are t
 Once done, it releases the process table and re-locks the supplied `spinlock`.  
 We'll get back to you folks on this one once we understand why on earth this is needed.
 
-###*Interrupts*
+###*Interrupts - CPU*
 
-There are two basic types of interrupts: internal and external.
+There are two basic types of interrupts: internal (thrown by CPU) and external (like keyboard strokes).
 
-We can decide whether to listen to external interrupts using `sti` and `cli` which sets or clears the `IF` bit on the `%eflags` register.  
+We can decide whether to listen to external interrupts using kernel-mode functions `sti()` and `cli()` which sets or clears the `IF` bit on the `%eflags` register.  
 We cannot ignore internal interrupts.
 
 Interrupts can only occur *between* commands.
@@ -683,15 +683,63 @@ During an interrupt, the CPU needs to know what kind of interrupt it is. These r
 In order to handle these interrupts, the CPU needs a table with pointers to functions that handle 'em (with the index being the interupt number).  
 This table is called IDT, and the register that points to it is `%IDTR`.
 
-Each row has a whole row of 64 bits as a descriptor.  
+Each row has a whole descriptor of 64 bits.
 These include:
 
 * `offset` - the actual address of the function (this guy is loaded to `%eip`)
 * `selector` - loaded to `%cs`
 * `type` - 1 for trap gate, 0 for interrupt gate (if interrupt, we disable other interrupts)
 
-Before an interrupt call, the kernel must push `%eflags`,`%cs` and `%eip` (so we'll have them again after the interrupt).  
-After the interrupt, the kernel needs to pop these guys again.
-
+Before an interrupt call, the CPU must do a bunch of stuff to rescue our registers before they are overriden by the IDT guy.  
 Reminder: the kernel stack's address is saved in a `tss` structure, which is saved in the GDT, in the index held by `%tr` register.  
-Therefore: the kernel needs to set this before calling an iterrupt.
+Therefore: the kernel needs to set this before an iterrupt occurs.  
+**SO**: The CPU uses the kernel stack to store our registers.  
+(And after the interrupt handling is over, the CPU needs to pop these guys again.)
+
+If the interrups occurs during **kernel-mode**, the CPU performs the following:
+
+* push `%eflags`,`%cs` and `%eip` to the **kernel** stack (so we'll have them again after the interrupt).  
+
+If the interrups occurs during **user-mode**, the CPU performs the following:
+
+* Store `%ss` in `%ss3`
+* Store `$esp` in `%esp3`
+* Store `tss.ss0` in `%ss`
+* Store `tss.esp0` in `%esp`
+* Push `%ss3`, `%esp3`, `%eflags`, `%cs` and `%eip` to **kernel** stack
+
+**Question**: Since we push a different number of registers for kernel-mode and user-mode, how do we know how many to pop back out?  
+**Answer**: In both cases, we need to first pop `%eip`, `%cs` and `%eflags`.  
+Having done that, we can look at the two right-most bits of `%cs` to see whether we were in user- or kernel-mode before the interrupt! Hurray!
+
+###*Interrups - xv6*
+
+In xv6, all interrups are handled by C function `trap`.
+
+However, this function needs to end with `iret` (that's the guy who handles all the poppin`), while C functions end with `ret`!
+
+So we must *wrap* `trap` in assembly code that ends in `iret`.  
+We do this in `alltraps`, which also pushes all the registers to the kernel stack before calling `trap`, and then pops them afterwards (and finally does `iret`).
+
+We can still access the register data during `trap`, even though `trap` is written in C (which can't access registers).  
+How?  
+By passing the kernel-stack as an argument, right before calling `trap`.  
+`trap` expected a `trapframe` structure, which holds register values. It just so happens to be that the `trapframe` Mr. `trap` receives is an actualy stack.  
+(Note that the order in which we push has to match the order of the fields in the `trapframe`.)
+
+Similarly, we could pass other data (such as error codes) by pushing 'em onto the stack.  
+We would just need to make sure that the structure that `trap` expects has "room" for this data.
+
+###*Interrups - vectors*
+
+In all interrups we want to call `alltraps`, but each one might want to push different data (such as error codes, etc.).
+
+In order to accomplish this, we have a script that generates `vector0`, `vector1, ... `vector255`.  
+Each `vector` is assembly code, which pushes wheatever data it wants and then jumps to `alltraps`.  
+(This script is in vectors.pl file.)
+
+**Question**: So how do we place the address of each `vector` in its matching entry in the IDT table?  
+Note that they are *not* all the same length, so we can't just loop and write to IDT.  
+**Answer**: A compination of another script, SETGATE macro, and some C.
+
+After we create the IDT table, each CPU needs to point its own `%IDTR` register at the IDT table.
