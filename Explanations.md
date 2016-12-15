@@ -19,7 +19,7 @@ Anyways, here we go.
 When I say "kernel", I mean the operating system.
 This is the mother of all programs that hogs the computer to itself and manages all the other programs and how they access the computer resources (such as memory, registers, time (that is, who runs when), etc.).
 
-The kernel also keeps control over the "mode" bit (in the PS register),
+The kernel also keeps control over the "mode" bit (in the `%ps` register),
 which marks whether current commands are running in user-mode
 (and therefore can’t do all kinds of privileged stuff) or kernel-mode (and therefore can do whatever it wants).
 
@@ -28,7 +28,7 @@ The processor (that is, the actual computer) does not know what operating system
 
 So how can the processor load xv6 into the memory?
 
-The processor PC register points - by default - to a certain memory place in the ROM, which contains a simple program that:
+The processor instruction pointer `%eip` register points - by default - to a certain memory place in the ROM, which contains a simple program that:
 
 1.	Copies the very first block (512 bytes. AKA the boot block) from the disc to the memory
 2.	Sets the PC to point to the beginning of the newly-copies data
@@ -41,7 +41,7 @@ If 512 bytes aren’t enough for this, the program can actually call a slightly 
 
 In short:
 
-1.	PC points to hard-coded ROM code
+1.	`%eip` points to hard-coded ROM code
 2.	ROM code loads beginning of OS code
 3.	Beginning of OS code loads the rest of the code
 4.	Now hear the word of the Lord!
@@ -174,20 +174,20 @@ In short: CPU [virtual] -> Segmentation [linear] -> Paging [physical] -> RAM
 
 Here's a bunch of 16-bit registers that are used by the Segmentation Unit:
 
-* `CS` - **C**ode. This guy actually messes with our `EIP` register (that's the guy who points to the next command!).
-* `DS` - **D**ata. By default, messes with all registers except `EIP`, `ESP` and `EBP`. (In assembly, we can override the choice of messing register.)
-* `SS` - **S**tack. By default, messes with `ESP` and `EBP` registers.
-* `ES` 
-* `FS`
-* `GS`
+* `%cs` - **C**ode. This guy actually messes with our `%eip` register (that's the guy who points to the next command!).
+* `%ds` - **D**ata. By default, messes with all registers except `%eip`, `%esp` and `%ebp`. (In assembly, we can override the choice of messing register.)
+* `%ss` - **S**tack. By default, messes with `%esp` and `%ebp` registers.
+* `%es` 
+* `%fs`
+* `%gs`
 
-The address `EIP` points to after going through `CS` is written as `CS`:`EIP`.
+The address `%eip` points to after going through `%cs` is written as `CS`:`EIP`.
 
-In the Segmentation Unit there is a register called GDTR. The kernel uses this to store the address of a table called GDT (Global Descriptor Table). Every row is 8 bytes, and row #0 is not used. It can have up to 8192 rows, but no more.
+In the Segmentation Unit there is a register called `%GDTR`. The kernel uses this to store the address of a table called GDT (Global Descriptor Table). Every row is 8 bytes, and row #0 is not used. It can have up to 8192 rows, but no more.
 
 The first two parts of each row are **Base** and **Limit**.
 
-When the Segmentation Unit receives and address, the CPU gives it an *index*. This index is written in one of the segmentation registers (`CS`, `DS`, ... `GS`), thusly:
+When the Segmentation Unit receives and address, the CPU gives it an *index*. This index is written in one of the segmentation registers (`%cs`, `%ds`, ... `%gs`), thusly:
 
 * Bits 0-1: permissions
 * Bit 2: "use GDT or LDT?" (Let's pretend this doesn't exist, because it does not interest us at all.)
@@ -208,7 +208,7 @@ Therefore, we will make sure that the GDT `Limit` is set to max possible, and th
 
 In order to allow consecutive virtual addresses to be mapped to different areas in the physical memory, we use **paging**.
 
-In the Paging Unit, there is a register named `CR3` (Control Register 3), which points to the **physical** address of the Page Table (kinda like GDT). A row in the Page Table has a whole bunch of data, such as page address, "is valid", and some other friendly guys.
+In the Paging Unit, there is a register named `%CR3` (Control Register 3), which points to the **physical** address of the Page Table (kinda like GDT). A row in the Page Table has a whole bunch of data, such as page address, "is valid", and some other friendly guys.
 
 When the Paging Unit receives a linear address, it acts thusly:
 
@@ -220,7 +220,7 @@ When the Paging Unit receives a linear address, it acts thusly:
 * Voila! We have in our hands a physical address.
 
 Note that each page can be in a totally different place in the physical memory. The pages can be scattered (in page-sized chunks) all along the RAM.  
-Also note: Hardware demands that the 12 right-most bits of `CR3` be 0. (If not, the hardware'll zero 'em itself.)
+Also note: Hardware demands that the 12 right-most bits of `%CR3` be 0. (If not, the hardware'll zero 'em itself.)
 
 **Uh oh**:  
 Each row in the Page Table takes up 4KB (that's 12 bits).  
@@ -267,7 +267,7 @@ Address | Who uses this
 Remember Mr. Boot? He loads xv6 to `[0x0010 0000]`.  
 By the time xv6 loads (and starts running `main`), we have the following setup:
 
-1. `ESP` register is pointing to a stack with 4KB, for xv6's use. (That's not a lot.)
+1. `%esp` register is pointing to a stack with 4KB, for xv6's use. (That's not a lot.)
 2. Segmentation Unit is ready, with a (temporaray) GDT that does no damage (first row inaccessible, and another two with 0 `Base` and max `Limit`.
 3. Paging Unit is ready, with a temporary page table. The paging table works thusly:
 
@@ -343,7 +343,7 @@ Don't pretend you understand, because you don't and it doesn't matter.
 
 We've got an array of CPU data, `cpus`.
 
-We can access specific SPU stuff via `cpus[SOME_CPU_IDENTIFIER]`.  
+We can access specific CPU stuff via `cpus[SOME_CPU_IDENTIFIER]`.  
 In order to get current CPU identifier, we call `getcpu()`, which is slow.
 
 When we do this, we *MUST* stop interrupts from happening, to make sure we stay within the same CPU.
@@ -383,7 +383,7 @@ c->gdt[SEG_KCPU]=SEG(STA_W, &c->proc, 8, 0);
 // Load the GDT
 lgdt(c->gdt, sizeof(c->gdt));
 
-// Set GS register to point at our fifth row in the GDT.
+// Set %gs register to point at our fifth row in the GDT.
 loadgs(SEG_KCPU << 3); // shift 3 left so we get value and not permission bits.
 
 // Declare out two variables,
@@ -408,7 +408,7 @@ Note that variable `cpu` points to the variables `cpu` and `proc`, so calling `p
 Note also that this means that calling `cpu->cpu->cpu->cpu` is the same as calling `cpu`.
 
 **Important note**: `GS` can be changed by code in user-mode.  
-So, every time there is an interrupt, we reload our value to `GS` using `loadgs(SEG_KCPU << 3);`. (Don't worry, we back up all user-mode's registers beforehand.)
+So, every time there is an interrupt, we reload our value to `%gs` using `loadgs(SEG_KCPU << 3);`. (Don't worry, we back up all user-mode's registers beforehand.)
 
 ###*Processes*
 
@@ -456,10 +456,10 @@ Trapframe contains all register data.
 When we return from an interrupt (or, in our case, start the process for the first time), we do the following:
 
 1. Pop the first 4 values to their appropriate registers
-2. Pop `eip` field to `eip` register (now `eip` register is pointing to `forkret` function)
+2. Pop `eip` field to `%eip` register (now `%eip` register is pointing to `forkret` function)
 3. Goto `forkret` function, which (somehow) takes us to the next guy in the stack...
 4. ...Trapret which pops another whole bunch of values from the stack to the registers
-5. And so on. We end up with all registers holding good values, and `eip` pointing to 0.
+5. And so on. We end up with all registers holding good values, and `%eip` pointing to 0.
 
 ###*The First Process*
 
@@ -527,8 +527,8 @@ We need this kernel-stack to be accessable only by the kernel.
 
 The hardware supports this, with a magnificent Rube Goldberg machine:
 
-* `tr` register can only be accessed in kernel-mode
-* `tr` contains `SEG_TSS`, which points to special place in GDT
+* `%tr` register can only be accessed in kernel-mode
+* `%tr` contains `SEG_TSS`, which points to special place in GDT
 * special place in GDT contains address and size of some weird struct
 * weird struct contains field `esp0`, which actually (finally) points to top of process's kernel stack
 
@@ -541,7 +541,7 @@ This could (theoretically) even happen with a single CPU, because of interrupts.
 
 ###*Locks - a possible solution (just for interrupts)*
 
-We can block interrupts (!) from happening by setting the `IF` bit in `eflags` register to 0.  
+We can block interrupts (!) from happening by setting the `IF` bit in `%eflags` register to 0.  
 This can be controlled (in kernel-mode, yes?) using the assembly commands:
 
 * `cli` (clears bit)
@@ -673,7 +673,7 @@ We'll get back to you folks on this one once we understand why on earth this is 
 
 There are two basic types of interrupts: internal and external.
 
-We can decide whether to listen to external interrupts using `sti` and `cli` which sets or clears the `IF` bit on the `eflags` register.  
+We can decide whether to listen to external interrupts using `sti` and `cli` which sets or clears the `IF` bit on the `%eflags` register.  
 We cannot ignore internal interrupts.
 
 Interrupts can only occur *between* commands.
@@ -681,17 +681,17 @@ Interrupts can only occur *between* commands.
 During an interrupt, the CPU needs to know what kind of interrupt it is. These range between 0-255, when 0-31 are reserved by Intel for all kinds of hardware stuff.
 
 In order to handle these interrupts, the CPU needs a table with pointers to functions that handle 'em (with the index being the interupt number).  
-This table is called IDT, and the register that points to it is `IDTR`.
+This table is called IDT, and the register that points to it is `%IDTR`.
 
 Each row has a whole row of 64 bits as a descriptor.  
 These include:
 
-* `offset` - the actual address of the function (this guy is loaded to `eip`)
-* `selector` - loaded to `cs`
+* `offset` - the actual address of the function (this guy is loaded to `%eip`)
+* `selector` - loaded to `%cs`
 * `type` - 1 for trap gate, 0 for interrupt gate (if interrupt, we disable other interrupts)
 
-Before an interrupt call, the kernel must push `eflags`,`cs` and `eip` (so we'll have them again after the interrupt).  
+Before an interrupt call, the kernel must push `%eflags`,`%cs` and `%eip` (so we'll have them again after the interrupt).  
 After the interrupt, the kernel needs to pop these guys again.
 
-Reminder: the kernel stack's address is saved in a `tss` structure, which is saved in the GDT, in the index held by `tr` register.  
+Reminder: the kernel stack's address is saved in a `tss` structure, which is saved in the GDT, in the index held by `%tr` register.  
 Therefore: the kernel needs to set this before calling an iterrupt.
