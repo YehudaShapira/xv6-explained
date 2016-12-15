@@ -131,11 +131,11 @@ Called by:
 
 ###`1757 kvmalloc(void)`
 
-Builds new page table and makes CR3 point to it.
+Builds new page table and makes `%CR3` point to it.
 
 **1759**: make table and get its address
 
-**1760**: make CR3 point to returned address
+**1760**: make `%CR3` point to returned address
 
 Called by [`main`](#1217-mainvoid).
 
@@ -261,11 +261,11 @@ Called by:
 ###`1616 seginit(void)`
 
 Sets segmentation table so that it doesn't get in the way, for each CPU. 
-Adds extra row to each segementation table in order to guard CPU-specific data, makes `GS` resgister point to it, and makes `proc` and `cpu` actually point to `GS`.
+Adds extra row to each segementation table in order to guard CPU-specific data, makes `%gs` resgister point to it, and makes `proc` and `cpu` actually point to `%gs`.
 
 **1624-1628**: set up regular rows in segmentation table
 
-**1631-1634**: set up special row and `GS` register
+**1631-1634**: set up special row and `%gs` register
 
 **1637-1638**: set up inital `proc` and `cpu` data
 
@@ -374,7 +374,7 @@ Called by `mpmain`.
 
 Perpares kernel-stack of process (that is, makes `tr` register indirectly point to it), and loads process's Page Table to `cr3`.
 
-**1776-1779**: set up `tr` register and `SEG_TSS` section in GDT end up magically (don't ask how) referring us to top of process's kernel stack
+**1776-1779**: set up `%tr` register and `SEG_TSS` section in GDT end up magically (don't ask how) referring us to top of process's kernel stack
 
 Called by:
 
@@ -391,17 +391,17 @@ Called by:
 Saves current register context in `old`, then loads the register context from `new`.  
 Basically gives control to new process.
 
-**2709**: set `eax` to contain address of `cpu->scheduler`
+**2709**: set `%eax` to contain address of `old` context
 
-**2710**: set `edx` to contain `proc->context`
+**2710**: set `%edx` to contain `new` context
 
-**2713-2716**: push `ebp`, `ebx`, `esi`, `edi` onto `old` stack
+**2713-2716**: push `%ebp`, `%ebx`, `%esi`, `%edi` onto current stack (which happens to be `old` stack)
 
-**2719**: copy value of `esp` to address held in `eax`, which happens to be (see line **2709**) `cpu->scheduler`, so that now the CPU's `scheduler` field actually points to the bottom of our stack!
+**2719**: copy value of `%esp` to address held in `%eax`, which is the `old` stack address (see line **2709**)
 
-**2720**: save value of `edx` in `esp`, so that now `esp` is pointing to the bottom of `proc->context`, **so that now we are in the `new` context instead of the `old`**
+**2720**: set current stack pointer (`%esp`) to value of `%edx`, which is the `new` stack address (see line **2710**)
 
-**2723-2726**: pop `edi`, `esi`, `ebx`, `ebp` from `new` stack onto the actual registers
+**2723-2726**: pop `%edi`, `%esi`, `%ebx`, `%ebp` from `new` stack onto the actual stack
 
 Called by:
 
@@ -461,7 +461,7 @@ Makes process sleep until `chan` event occurs.
 
 ###`1555 pushcli(void)`
 
-Saves state of `eflags` register's `IF` bit (that is, the current state of "listen to interrupts?" bit),  
+Saves state of `%eflags` register's `IF` bit (that is, the current state of "listen to interrupts?" bit),  
 increments the "how many times did we choose to ignore interrupts" counter,  
 and clears the "listen to interrups" bit.
 
