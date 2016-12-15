@@ -511,3 +511,44 @@ Releases spinlock from being held by current CPU.
 **1521**: re-enable interrups (which were disabled in `acquire`)
 
 ---
+
+###`3004 alltraps`
+
+Catches and prepares all interrupts for `trap`.  
+Pushes register data on stack, calls `trap` with the `stack` as a `trapframe` argument, pops register data from stack, and finally calls `iret`.
+
+**3005-3010**: store registers and build `trapframe`
+
+**3013-3018**: set up data and per-CPU segments (?)
+
+**3021-3023**: call `trap`, using stack as argument
+
+**3027-3034**: pop registers and call `iret`
+
+---
+
+###`3101 trap(struct trapframe *tf)`
+
+Handles all interrups.
+
+**3106**: save `tf` to `proc->tf`, so that we don't need to start passing it around to `syscall`
+
+Called by [`alltraps](#3004-alltraps)
+
+---
+
+###`3067 tvinit(void)`
+
+Initializes the IDT table.
+
+Called by [`main`](#1217-mainvoid).
+
+---
+
+###`3079 idtinit(void)`
+
+Makes `%IDTR` point at existing IDT table.
+
+Called by `mpmain`
+
+---
