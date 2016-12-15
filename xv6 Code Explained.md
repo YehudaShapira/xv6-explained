@@ -73,7 +73,7 @@ Called by:
 
 ---
 
-###`2815 kfree (char *v)`
+###`2815 kfree(char *v)`
 
 Frees the (single!) page that `v` points at.  
 
@@ -175,7 +175,7 @@ Called by:
 
 * `copyuvm`
 
-* [`userinit`](#2252-userinintvoid)
+* [`userinit`](#2252-userinitvoid)
 
 * `exec`
 
@@ -188,7 +188,7 @@ Creates translations from *`va`* (virtual address) to *`pa`* (physical address) 
 
 **1684**: get starting address
 
-**1685**: get ending address (which is statring address if `size`=1)
+**1685**: get ending address (which is starting address if `size`=1)
 
 **1686**: for each page...
 
@@ -273,9 +273,11 @@ Called by [`main`](#1217-mainvoid).
 
 ---
 
-###`2252 userinint(void)`
+###`2252 userinit(void)`
 
 Creates and sets up The First Process.
+
+**2255**: data and size of First Process code. Filled by script during compilation.
 
 **2257**: allocate `proc` structure and set up data on kernel stack
 
@@ -316,7 +318,7 @@ Allocates `proc` structure and sets up data on kernel stack.
 
 Called by:
 
-* [`userinit`](#2252-userinintvoid)
+* [`userinit`](#2252-userinitvoid)
 
 * `fork`
 
@@ -336,7 +338,7 @@ Allocates and maps single page (4KB), and fills it with with program code.
 
 **1812**: copy the code
 
-Called by [`userinit`](#2252-userinintvoid).
+Called by [`userinit`](#2252-userinitvoid).
 
 ---
 
