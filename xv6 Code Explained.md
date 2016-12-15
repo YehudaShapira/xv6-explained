@@ -459,6 +459,8 @@ Makes process sleep until `chan` event occurs.
 
 **2583**: lock `lk` once again
 
+---
+
 ###`1555 pushcli(void)`
 
 Saves state of `%eflags` register's `IF` bit (that is, the current state of "listen to interrupts?" bit),  
@@ -494,10 +496,18 @@ Called by:
 
 Loops over spinlock until lock is acquired (exclusively by current CPU).
 
+**1476**: disable interrupts (which will be enabled in `release`)
+
+**1483-1484**: loop over lock until it has a zero (and write "1" in it)
+
 ---
 
 ###`1502 release(struct spinlock *lk)`
 
 Releases spinlock from being held by current CPU.
+
+**1519**: write "0" in lock
+
+**1521**: re-enable interrups (which were disabled in `acquire`)
 
 ---
