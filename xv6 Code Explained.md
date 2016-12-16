@@ -523,7 +523,11 @@ Pushes register data on stack, calls `trap` with the `stack` as a `trapframe` ar
 
 **3021-3023**: call `trap`, using stack as argument
 
+- **3023**: skip over top of frame (`%esp` address) without popping it into anything
+
 **3027-3034**: pop registers and call `iret`
+
+- **3033**: skip over data and per-CPU segments (without popping it into anything)
 
 ---
 
@@ -531,9 +535,24 @@ Pushes register data on stack, calls `trap` with the `stack` as a `trapframe` ar
 
 Handles all interrups.
 
-**3106**: save `tf` to `proc->tf`, so that we don't need to start passing it around to `syscall`
+**3103-3111**: handle system call and return
 
-Called by [`alltraps](#3004-alltraps)
+- **3106**: save `tf` to `proc->tf`, so that we don't need to start passing it around during `syscall`
+
+**3113-3143**: handle controller interrupts (keyboard, timer, etc.)
+
+**3150-3163**: handle unexpected interrupt
+
+- **3151**: check if there is no current process (i.e. during `scheduler`) or if we were in kernel-mode during interrupt
+- **3158-3162**: print error and kill buggy process
+
+**3168-3178**: finish up non-system calls
+
+- **3168-3169**: if process is user-process, and killed, and is not in the middle of a system-call, exit (and don't return to `alltraps`)
+- **3173-3174**: if process is running, and we had a timer-interrupt, and the process ran for long enough already, yield CPU back to `scheduler`
+- **3177-3178**: after previous yield, if process was killed (and not in middle of system-call), exit
+
+Called by [`alltraps`](#3004-alltraps)
 
 ---
 
@@ -550,5 +569,59 @@ Called by [`main`](#1217-mainvoid).
 Makes `%IDTR` point at existing IDT table.
 
 Called by `mpmain`
+
+---
+
+###`3375 syscall(void)`
+
+Handles system-calls from user-code.
+
+**3379**: get system-call number
+
+**3380**: make sure number is valid
+
+**3381**: execute system-call and store return value in process's trapframe's `eax` field (which will afterward be popped to `%eax`)
+
+**3382-3385**: if bad system-call number, print error and store -1 (error) in trapframe's `eax` field
+
+Called by [`trap`](#3101-trapstruct-trapframe-tf).
+
+---
+
+###`3465 sys_sleep(void)`
+
+System call for sleeping a certain amount of ticks.
+
+**3470**: get number of required ticks (and validate that the user supplied a valid address as an argument)
+
+**3472**: lock tickslock
+
+**3473**: store current (initial) value of `ticks` in `ticks0`
+
+**3474-3480**: while required number of ticks didn't pass, loop
+
+- **3479**: wait for event #`&ticks` (we don't really need the lock in this case, but usually in `sleep` call we need to lock because other cases we `sleep` for disc or something else where we don't want two process's to grab the resource simultaneously)
+
+Can be called by user code.
+
+---
+
+###`2614 wakeup(void *chan)`
+
+Locks process table, finds all sleeping processes that are waiting for `chan`, and makes them runnable.
+
+Called by a lot of different functions.
+
+---
+
+###`2603 wakeup1(void *chan)`
+
+Finds all sleeping processes that are waiting for `chan`, and makes them runnable.
+
+Called by:
+
+* `exit`
+
+* [`wakeup`](#2614-wakeupvoid-chan)
 
 ---
