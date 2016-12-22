@@ -753,7 +753,7 @@ The system-call numbers are saved as constants in syscall.h file.
 
 Then we have a vector that maps each constant to its appropriate function. This vector is used in `syscall` function in order to execute the system-call.
 
-###*"sleep" system-call*
+###*`sleep` system-call*
 
 There is a global variable called `ticks`.
 
@@ -773,3 +773,24 @@ subl $4, %esp ; empty word. Some weird convention
 movl $SYS_sleep, %eax
 int $64
 ```
+
+###*Getting arguments in system-calls*
+
+In the example of `sleep`, the argument (how many ticks to wait) is stored on the **user**-stack.
+
+This is accessed via `proc->tf->esp + 4` (the +4 is to skip the empty word, which is on the stack because of some weird convension). We do this in `argint` function.
+
+Because this the data is placed on the stack by *user code* (which is pointed at by `%esp`), we need to check that the user didn't set `%esp` to point at some invalid address! We do this in `fetchint` function.
+
+###*Fork() #2*
+
+When we `fork` a proc, we need to copy a bunch of its data.  
+We want to map *new* physical addresses, but copy the old data.  
+We want to create a *new* kernel stack.  
+We want to copy context.  
+We want to state to be RUNNABLE (and not RUNNING like parent).  
+We want a new `pid`.
+
+A lot of this stuff is already handled by `allocproc`.
+
+The memory stuff is handled by `copyuvm`.
