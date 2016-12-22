@@ -608,7 +608,7 @@ Can be called by user code.
 
 ###`2614 wakeup(void *chan)`
 
-Locks process table, finds all sleeping processes that are waiting for `chan`, and makes them runnable.
+Locks process table, finds all sleeping processes that are waiting for `chan`, makes them runnable, and unlocks process table.
 
 Called by a lot of different functions.
 
@@ -623,5 +623,127 @@ Called by:
 * `exit`
 
 * [`wakeup`](#2614-wakeupvoid-chan)
+
+---
+
+###`3295 argint(int n, int *ip)`
+
+Gets the `n`th *integer* argument pushed onto the user-stack by user code before user asked for system-call.
+
+---
+
+###`3267 fetchint(uint addr, int *ip)`
+
+Gets the integer argument in address `addr`, and sets it in `ip`.  
+Returns 0 if successful, -1 otherwise.
+
+**3267**: Validates that neither "edge" of integer-containing address space goes beyond valid proc memory.
+
+Called by:
+
+* [`argint`](#3295-argintint-n-int-ip)
+
+* `sys_exec`
+
+---
+
+###`2304 fork(void)`
+
+Creates new process, copying lots from its parent, and set stack as if returning from a system-call.
+
+**2310**: allocate new proc. Proc now contains kernel-stack, context (with trapret address), trapframe and pid
+
+**2314-2319**: copy memory
+
+- **2314**: copy memory
+
+- **2315-2318**: if error, free kernel stack
+
+**2320**: copy `sz`
+
+**2321**: set parent
+
+**2322**: *copy* trapframe struct to new kernel-stack
+
+**2325**: clear `%eax` so `fork` will return 0 for child process
+
+**2327-2330**: do file stuff
+
+**2333**: make new proc RUNNABLE (at this point, `scheduler` can grab child process before parent)
+
+---
+
+###`1953 copyuvm(pde_t *pgdir, uint sz)`
+
+Creates copy of parent memory for child process.  
+Returns address of new page table.
+
+**1960**: set up kernel virtual pages
+
+**1962**: loop over all pages:
+
+- **1963**: get address+flags of parent process's page
+
+- **1965**: make sure page is actually present
+
+- **1967**: get physical address of parent process's page
+
+- **1968**: allocate new page
+
+- **1970**: copy memory from old physial page to new physical page
+
+- **1971**: add-n-map new page to new page table
+
+**1974**: if no errors, return address of new page table
+
+**1977-1978**: if there were any errors, release all memory and return 0
+
+Called by [`fork`](#2304-forkvoid)
+
+---
+
+###`1910 freevm(pde_t *pgdir)`
+
+Frees a page table and all the physical memory pages (in its user part).
+
+**1916**: free user-mode pages
+
+**1917-1921**: free internal page tables
+
+**1923**: free external page table
+
+Called by:
+
+* [`copyuvm`](#1953-copyuvmpde_t-pgdir-uint-sz)
+
+* `wait`
+
+* `exec`
+
+---
+
+###`1882 deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)`
+
+Deallocates user pages to bring the process size from `oldsz` to `newsz`.
+
+**1891**: loop over extra pages we want to deallocate:
+
+- **1892**: get virtual address of internal table entry that points to current page-to-remove
+
+- **1896**: get physical address of page
+
+- **1899**: get virtual address of page
+
+- **1900**: free page
+
+- **1901**: mark internal page table entry as "pointing at no page"
+
+Called by:
+
+* `allocuvm`
+
+* [`freevm`](#1910-freevmpde_t-pgdir)
+
+* `growproc`
 
 ---
