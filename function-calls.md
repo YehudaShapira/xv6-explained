@@ -10,6 +10,14 @@
   
   - **setupkvm** *(sets up kernel page table)*
   
+    - **mappages** *(adds translations to page table)
+    
+      - **walkpgdir** *(allocates and maps page)*
+      
+        - **kalloc** *(allocates page)*
+        
+        - **memset** *(clean new page)*
+  
 - **seginit** *(sets up segmentation table)*
 
 - **tvinit** *(initializes interrupt table)*
@@ -25,6 +33,14 @@
   - **allocproc** *(allocates new proc)*
   
   - **setupkvm** *(sets up kernel page table)*
+  
+    - **mappages** *(adds translations to page table)
+    
+      - **walkpgdir** *(allocates and maps page)*
+      
+        - **kalloc** *(allocates page)*
+        
+        - **memset** *(clean new page)*
   
   - **inituvm** *(allocates and maps single page, and copies First Process code to it)*
 
@@ -50,3 +66,50 @@
       
 ---
 
+**fork** *(creates child process)*
+
+- **allocproc** *(allocates new proc)*
+
+- **copyuvm** *(copies memory)*
+
+  - **setupkvm** *(sets up kernel page table)*
+  
+    - **mappages** *(adds translations to page table)
+    
+      - **walkpgdir** *(allocates and maps page)*
+      
+        - **kalloc** *(allocates page)*
+        
+        - **memset** *(clean new page)*
+  
+  - **walkpgdir** *(validate that page mapping exists, without allocating or cleaning)*
+  
+  - **kalloc** *(allocate new page for user-code)*
+  
+  - **memmove** *(copy page data)*
+  
+  - **mappages** *(add user-code page)*
+  
+    - **walkpgdir** *(maps page, without allocating or cleaning)*
+    
+  - **freevm** *(free page table in case of error)*
+  
+    - **deallocuvm** ()
+    
+      - **walkpgdir** *(get entry of internal page)*
+      
+      - **kfree** *(free actual page)*
+    
+    - **kfree** *(free inner table)*
+    
+    - **kfree** *(free outer table)*
+  
+- **kfree** *(if error, free kernel-stack)*
+
+- **filedup
+
+- **idup**
+
+- **safestrcpy**
+
+---
