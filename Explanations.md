@@ -240,6 +240,22 @@ Thus, a virtual address can be broken down like so:
 * `i1` is the index of a second table
 * `offset` is the offset
 
+###*Addresses - double mapping*
+
+Every single physical address is mapped by the kernel to virtual address by adding KERNBASE to it.
+
+When a process is given a virtual address, this new virtual address is *in addition* to the kernel mapping.
+
+So when we want to get the physical address of a virtual address:
+
+1. If the user-code is asking, it needs to access the page tables.
+
+2. Is the kernel is asking, it can simply subtract KERNBASE from the address.
+
+Likewise, the kernel can determine *its* virtual address of *any* physical address by adding KERNBASE.
+
+KERNBASE = 0x80000000.
+
 ###*`1217 main`*
 
 In the beginning, we know that from `[0x0000 0000]` till `[0x0009 FFFF]` there are 640KB RAM.  
@@ -794,3 +810,53 @@ We want a new `pid`.
 A lot of this stuff is already handled by `allocproc`.
 
 The memory stuff is handled by `copyuvm`.
+
+###*Exec() #2*
+
+`exec` replaces current process with new one.
+
+Because this may fail, we don't want to destroy the current memory data until we know we succeeded.  
+In order to keep the current memory until the end, we need to create a *new* memory mapping, and only switch to it (and destroy the old mapping) at the very end.
+
+In order for `exec` to run the file it's told to run, the file needs to be in ELF format.
+
+###*ELF*
+
+Executable and Linkable Format.
+
+In xv6 we only use *static* ELF, but in real life there are also *dynamic* ones but we don't care about that here.
+
+ELF file have:
+
+1. ELF header at the very start
+
+2. PROGHDR vector
+
+3. Program sections
+
+The program sections include the actual code, as well as external code linked by the linker.  
+There can be many program sections, scattered along different parts of the file (but not at the beginning).  
+Each program section needs a *program header*, which says where it is in the file and where it is in the RAM.  
+All the *program headers* are held in the PROGHDR vector.  
+The location of PROGHDR is held in the ELF header.
+
+ELFHDR (that's our ELF header) has a bunch of fields, but we'll only look here at a few:
+
+* uint magic - must equal ELF_MAGIC. Just an assurance all's good.
+* ushort machine - the type of processor. xv6 actually doesn't pay attention to this, so I don't know why we bothered mentioning this one.
+* uint entry - virtual address of `main`
+* uint phoff - PH offset, location of PROGHDR
+* uint phnum - PH number, length of PROGHDR
+* uint flags - uh... flags.
+
+Since the ELF is created by user-code, the kernel doesn't trust it.  
+The kernel treats the data with caution, and fails the `exec` if there are any errors.
+
+PROGHDR has the following important fields in each vector:
+
+* uint off - where section starts in file
+* uint filesz - where sections ends in file (so last byte is in off+filesz-1)
+* uint vaddr - virtual addres to which section is loaded
+* uint memsz - size section takes in memory. May be larger than filesz, because section may include lots of zeros (but not the other way around).
+
+The kernel needs to loop and copy the memory, allocating new memory if either 1) we need more memory or 2) `vaddr` is beyond what is already allocated. This is done using `allocuvm`.
