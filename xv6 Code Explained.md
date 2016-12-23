@@ -177,7 +177,7 @@ Called by:
 
 * [`userinit`](#2252-userinitvoid)
 
-* `exec`
+* [`exec`](#5910-execchar-path-char-argv)
 
 ---
 
@@ -382,7 +382,7 @@ Called by:
 
 * [`scheduler`](#2458-schedulervoid)
 
-* `exec`
+* [`exec`](#5910-execchar-path-char-argv)
 
 ---
 
@@ -718,7 +718,7 @@ Called by:
 
 * `wait`
 
-* `exec`
+* [`exec`](#5910-execchar-path-char-argv)
 
 ---
 
@@ -740,10 +740,62 @@ Deallocates user pages to bring the process size from `oldsz` to `newsz`.
 
 Called by:
 
-* `allocuvm`
+* [`allocuvm`](#1853-allocuvmpde_t-pgdir-uint-oldsz-uint-newsz)
 
 * [`freevm`](#1910-freevmpde_t-pgdir)
 
 * `growproc`
+
+---
+
+###`1853 allocuvm(pde_t *pgdir, uint oldsz, uint newsz)`
+
+Allocate page tables and physical memory to grow process from `oldsz` to `newsz`.  
+returns `newsz` if succeeded, 0 otherwise.
+
+Called by:
+
+* `growproc`
+
+* [`exec`](#5910-execchar-path-char-argv)
+
+---
+
+###`5910 exec(char *path, char **argv)`
+
+Replaces current process with new one.
+
+**5920**: open file
+
+**5926**: read ELF header
+
+**5936-5947**: loop over sections:
+
+- **5937**: read section from file
+
+- **5943**: allocate memory
+
+- **5945**: load code and data
+
+**5948**: close file
+
+---
+
+###`1818 loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)`
+
+Loads a `sz`-sized program section from `ip` file (in `offset` offset) to address `addr` (which is already mapped in `pgdir`).  
+Returns 0 if successful, -1 otherwise.
+
+**1825-1835**: loop page by page (because the pages mapped in `pgdir` are scattered (and we can't rely on the Paging Unit to handle this, because `pgdir` is not our current page table))
+
+- **1826**: validate that page is already mapped
+
+- **1828**: get physical address
+
+- **1829-1832**: take care of case where what's left to read is less than page
+
+- **1833**: copy code-n-data
+
+Called by [`exec`](#5910-execchar-path-char-argv)
 
 ---
