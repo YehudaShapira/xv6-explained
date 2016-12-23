@@ -106,7 +106,7 @@
   
 - **kfree** *(if error, free kernel-stack)*
 
-- **filedup
+- **filedup**
 
 - **idup**
 
