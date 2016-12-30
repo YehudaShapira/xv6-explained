@@ -765,19 +765,41 @@ Called by:
 
 Replaces current process with new one.
 
-**5920**: open file
+**5920-5949**: load da code
 
-**5926**: read ELF header
+- **5920**: open file
 
-**5936-5947**: loop over sections:
+- **5926**: read ELF header
 
-- **5937**: read section from file
+- **5936-5947**: loop over sections in `proghdr`:
 
-- **5943**: allocate memory
+  - **5937**: read section from file
 
-- **5945**: load code and data
+  - **5943**: allocate memory
 
-**5948**: close file
+  - **5945**: load code and data
+
+- **5948**: close file
+
+**5952-5956**: allocate user-stack and guard page
+
+- **5952**: round up address in order to add stack and guard-page at new page
+
+- **5953**: allocate two pages, for stack and guard page
+
+- **5955**: remove user-mode bit from guard page
+
+- **5956**: set stack pointer to point to stack page
+
+**5959-5967**: push arguments to new process user-stack
+
+- **5959**: loop over arguments:
+
+  - **5962**: move stack pointer so there's room for all arguments
+  
+  - **5963**: copy argument
+
+- **5967**: 
 
 ---
 
@@ -797,5 +819,26 @@ Returns 0 if successful, -1 otherwise.
 - **1833**: copy code-n-data
 
 Called by [`exec`](#5910-execchar-path-char-argv)
+
+---
+
+###`2002 uva2ka(pte_t *pgdir, char *uva)`
+
+Returns the kernel virtual address of a user virtual address.  
+Only works for addresses of pages (and not for middle of page).
+
+**2006**: get `pte` entry
+
+**2011**: get offset, do `p2v` to it, and return result
+
+---
+
+###`2018 copyout(pde_t *pgdir, uint va, void *p, uint len)`
+
+Copies `len` bytes from `p` address to `pgdir->va` address.
+
+**2029**: get `va` offset within its page
+
+**2032**: copy data
 
 ---
