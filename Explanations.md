@@ -21,7 +21,7 @@ This is the mother of all programs that hogs the computer to itself and manages 
 
 The kernel also keeps control over the "mode" bit (in the `%ps` register),
 which marks whether current commands are running in user-mode
-(and therefore can’t do all kinds of privileged stuff) or kernel-mode (and therefore can do whatever it wants).
+(and therefore canӴ do all kinds of privileged stuff) or kernel-mode (and therefore can do whatever it wants).
 
 ###*Boot*
 The processor (that is, the actual computer) does not know what operating system is installed, what it looks like, or how large it is.
@@ -37,7 +37,7 @@ So what?
 
 Every operating system needs to make sure that its first 512 bytes are a small program (it has to be small; it's only 512 bytes!)
 that loads the rest of the operating system to the memory and sets the PC to whatever place it needs to be in.
-If 512 bytes aren’t enough for this, the program can actually call a slightly larger program that can load and set up more.
+If 512 bytes arenӴ enough for this, the program can actually call a slightly larger program that can load and set up more.
 
 In short:
 
@@ -48,7 +48,7 @@ In short:
 
 ###*Processes*
 
-A process is the running of a program, including the program’ state and data. The state includes such things as:
+A process is the running of a program, including the programҠstate and data. The state includes such things as:
 
 -	Memory the program occupied
 -	Memory contents
@@ -81,9 +81,9 @@ A process can call the kernel to do `fork()`, which creates a new process, which
 
 ###*`exec()`*
 
-`Fork()` creates a new process, and leaves the parent running. `Exec()`, on the other hand, replaces the process's program with a new program. It’s still the same process, but with new code (and variables, stack, etc.). Registers, pid, etc. remain the same.
+`Fork()` creates a new process, and leaves the parent running. `Exec()`, on the other hand, replaces the process's program with a new program. Itӳ still the same process, but with new code (and variables, stack, etc.). Registers, pid, etc. remain the same.
 
-It is common practice to have the child of `fork` call `exec` after making sure it is the child. So why not just make a single function that does both fork and exec together? There is a brilliant explanation for this, and I don’t remember what it is.
+It is common practice to have the child of `fork` call `exec` after making sure it is the child. So why not just make a single function that does both fork and exec together? There is a brilliant explanation for this, and I donӴ remember what it is.
 
 ###*Process termination*
 
@@ -120,7 +120,7 @@ However, all processes run on user-mode only; xv6 makes sure of that.
 In order to run a privileged command, a process must ask the kernel (which runs in kernel-mode, of course) to carry out the command.
 This "asking" is called a system call.
 
-Here’s an example of system call on Linux with x86 processor:
+Hereӳ an example of system call on Linux with x86 processor:
 
 ```assembly
 movl flags(%esp), %ecx
@@ -136,11 +136,11 @@ The kernel has a vector with a bunch of pointers to functions (Yay, pointers!).
 
 This one's a biggie. Hold on to your seatbelts, kids.
 
-Programs refer to memory addresses. They do this when they refer to a variable (that's right; once code's compiled, all mentions of the variable are turned into the variable's address). They do this in every `if` or loop. When the good old `EIP` register holds the address of the next instruction, it's referring to a memory address.
+Programs refer to memory addresses. They do this when they refer to a variable (that's right; once code's compiled, all mentions of the variable are turned into the variable's address). They do this in every `if` or loop. When the good old `%eip` register holds the address of the next instruction, it's referring to a memory address.
 
 There are two issues that arise from this:
 
-* The compiled code does not know where in the memory the program is going to be, and therefore these addresses must be relative to the program's actual address. (This is a problem with loops and ifs, not with the `EIP`.)
+* The compiled code does not know where in the memory the program is going to be, and therefore these addresses must be relative to the program's actual address. (This is a problem with loops and ifs, not with the `%eip`.)
 * We'll want to make sure no evil program tries to access the memory of another program.
 
 So, each process has to have its "own" addresses, which it thinks are the actual addresses. It has *nothing* to do with the actual RAM, just with the *addresses* that the process knows and refers to. (**Process**, not **program**; this includes the kernel.)
@@ -329,7 +329,7 @@ Note that we'll be using `v2p`, which is a hard-coded mother-function that trans
 
 - **Step 3.3**: Figure out i1 (index in `pgtab`) (using *va* & `v2p` function), write *pa* there, mark as valid.
 
-**Step 4**: Set CR3 to point at `pgdir`, using `v2p`.
+**Step 4**: Set `%CR3` to point at `pgdir`, using `v2p`.
 
 THE NOTE MENTIONED EARLIER: After we already have some subtables, we only need to create new subtables if the requested subtable does not exist yet.  
 How do we know whether it exists already? Simply by looking at the current i0 and seeing whether it's already marked as valid.
@@ -877,3 +877,33 @@ After `exec` loads da codes, it allocates another page for the user-stack.
 
 ###*`exec` - pushing arguments to new process*
 
+New process expects the following to be on the user-stack:
+
+variable | what it holds
+--- | ---
+`argv` | pointer to vector of pointers to string arguments (with 0 in last place)
+`argc` | number of arguments
+ | | return address
+ 
+ ...And this is how `exec` fills the user-stack:
+ 
+ | user-stack |
+ |---|
+ | argument |
+ | ... |
+ | argument |
+ | 0 |
+ | pointer to argument |
+ | ... |
+ | pointer to argument |
+ | `argv` (pointing to this ↑ guy) |
+ | `argc` |
+ | -1 |
+ 
+ Note that the `pointers to arguments` don't really need to be on the stack; we just put 'em there because we have to put them *somewhere* so why not.
+ 
+ Note also that we don't know in advance how many arguments there are and how long they'll be.  
+ Therefore, our code must first place the arguments stuff, and only afterwards copy `argc`, `argv` and return address.  
+ *Therefore*, we save `argc` & `argv` & return address to a temporary variable `ustack`, which we copy to actual stack at the end of the argument pushing.
+ 
+ 
