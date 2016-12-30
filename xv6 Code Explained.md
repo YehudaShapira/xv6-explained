@@ -795,11 +795,43 @@ Replaces current process with new one.
 
 - **5959**: loop over arguments:
 
-  - **5962**: move stack pointer so there's room for all arguments
+  - **5962**: move new process stack pointer so there's room for current argument
   
-  - **5963**: copy argument
+  - **5963**: copy argument to actual new process user-stack
+  
+  - **5965**: make `argv` vector entry (which is still in temporary `ustack` variable!) point to current argument that we just pushed to stack
 
-- **5967**: 
+- **5967**: put 0 in last entry of `argv` vector (which is still in temporary `ustack` variable!), as is expected by convention
+
+- **5969**: put -1 as return address in appropriate spot in temporary `ustack` variable
+
+- **5970**: put `argc` in appropriate spot in temporary `ustack` variable
+
+- **5971**: put address of where `argv` will be in new user-stack (but isn't there yet) in appropriate spot in temporary `ustack` variable
+
+- **5974**: now that all arguments are copied to new user-stack, and we know where to place return address & `argc` & `argv`, copy `ustack` variable to new process user-stack
+
+**5978-5981**: copy new process name
+
+- **5978-5980**: get part of the name after all the slashes
+
+**5984-5991**: switch address space and fix trapframe
+
+- **5984**: save old page table for freeing later
+
+- **5985**: give proc new page table!
+
+- **5986**: give proc new size
+
+- **5987**: set trapframe's `eip` to new process entry point
+
+- **5988**: set trapframe's `sp` to new process user-stack
+
+- **5989**: make `%CR3` point to new page table (which doesn't harm our current running!)
+
+- **5990**: free old page table
+
+- **5991**: return to syscall, which returns to alltraps, which returns to popall, which returns to iret, which pops a bunch of values to actual registers, which include `%eip`, which makes us actually continue with the new process
 
 ---
 
@@ -842,3 +874,23 @@ Copies `len` bytes from `p` address to `pgdir->va` address.
 **2032**: copy data
 
 ---
+
+###`2354 exit(void)`
+
+Exists current process.
+
+**2359-2360**: make sure we're not the First Process
+
+**2363-2368**: close all files opened by user-code
+
+**2370-2371**: close current working-directory
+
+**2376**: let parent know we're exiting (in case parent called `wait` for child to exit) (The `chan` the parent is waiting for is the parent's `proc` address)
+
+**2379-2385**: pass abandoned children to the First Process
+
+- **2382-2383**: if child did `exit`, let the First Process know
+
+**2388**: become zombie
+
+**2389**: awaken the `scheduler`
