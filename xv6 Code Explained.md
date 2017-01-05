@@ -894,3 +894,65 @@ Exists current process.
 **2388**: become zombie
 
 **2389**: awaken the `scheduler`
+
+---
+
+###`5225 filealloc(void)`
+
+Finds the first free slot in the global file table, and returns its *address*.  
+If there are none free, returns 0.
+
+---
+
+###`5438 fdalloc(struct file *f)`
+
+Finds the first free slot in the process's file table, points it to `f`, and returns the index (AKA the file descriptor).  
+If no room, returns -1.
+
+---
+
+###`5252 filedup(struct file *f)`
+
+Increments the reference count of `f`.  
+(Used as part of the file duplication process)
+
+---
+
+###`5451 sys_dup(void)`
+
+Duplicates proc's reference to file.
+
+**5458**: actual duplication
+
+**5460**: increment ref count
+
+---
+
+###`5419 argfd(int n, int *pfd, struct file **pf)`
+
+Gets the `n`th argument sent to the system call, as a file descriptor.  
+Returns descriptor and the struct file it points to.
+
+---
+
+###`5315 fileread(struct file *f, char *addr, int n)`
+
+Reads from `f` to `addr`.
+
+**5319**: make sure can read
+
+**5321-5322**: handle case when file is pipe
+
+**5323-5329**: handle case when file is inode:
+
+  - **5324**: lock the inode (because we must)
+  
+  - **5325**: read
+  
+  - **5326**: update offset
+  
+  - **5327**: unlock the inode
+
+Called by `sys_read`.  
+
+---
