@@ -887,23 +887,75 @@ variable | what it holds
  
  ...And this is how `exec` fills the user-stack:
  
- | user-stack |
- |---|
- | argument |
- | ... |
- | argument |
- | 0 |
- | pointer to argument |
- | ... |
- | pointer to argument |
- | `argv` (pointing to this ↑ guy) |
- | `argc` |
- | -1 |
+ user-stack |
+ ---|
+  argument |
+  ... |
+  argument |
+  0 |
+  pointer to argument |
+  ... |
+  pointer to argument |
+  `argv` (pointing to this ↑ guy) |
+  `argc` |
+  -1 |
  
- Note that the `pointers to arguments` don't really need to be on the stack; we just put 'em there because we have to put them *somewhere* so why not.
+Note that the `pointers to arguments` don't really need to be on the stack; we just put 'em there because we have to put them *somewhere* so why not.
+
+Note also that we don't know in advance how many arguments there are and how long they'll be.  
+Therefore, our code must first place the arguments stuff, and only afterwards copy `argc`, `argv` and return address.  
+*Therefore*, we save `argc` & `argv` & return address to a temporary variable `ustack`, which we copy to actual stack at the end of the argument pushing.
  
- Note also that we don't know in advance how many arguments there are and how long they'll be.  
- Therefore, our code must first place the arguments stuff, and only afterwards copy `argc`, `argv` and return address.  
- *Therefore*, we save `argc` & `argv` & return address to a temporary variable `ustack`, which we copy to actual stack at the end of the argument pushing.
- 
- 
+###*I/O*
+
+xv6 supplies the following system-call functions for files:
+
+* `open(char *name, int flag)` - opens file and returns file descriptor (i.e. index in file array)
+* `close(int fd)` - closes file
+* `pipe(int pipefd[2])` - kinda like a file, for sending messages between processes
+* `dup(int fd)` - duplicates opening to file (so if we move the cursor/offset of one (such as by reading), it'll affect the other)
+* `read`
+* `write`
+* `stat`
+
+Reading/writing can be much different if we're dealing with keyboard, file, etc., but xv6 strives to make them "act" the same.  
+We've got the following read/writables:
+
+* pipe
+* inode
+  - file
+  - directory
+  - device
+
+Each has its own internal functions for reading, writing, etc., but - as mentioned above - xv6 wraps 'em and hides 'em from user code.
+
+xv6 has an abstract struct `file`, which it uses for all the above read/writables.  
+xv6 has functions that deal with this `file`, but they accept a *pointer* instead of a file descriptor.  
+Why? Because:
+
+* xv6 needs a pointer to an actual struct, because it needs to handle data.
+* User code isn't trusted to handle pointers; it gives us a file descriptor, and the *kernel* accesses the actual pointer.
+
+So how to we maintain this translation between file descriptors and pointers?  
+With an array "ofile", that's how.
+
+These `file` guys have basic data that all read/writables contains, such as "type".  
+**Inode**s implement their "inheritance" by having their "type" be "FD_INODE", and containing a pointer (in "inode" field) to a `struct inode` that has its very own data (such as "type", which could be "T_FILE" for a file or "T_DEV" for device).
+
+OK, this explanation is pretty lame :(  
+You should really just see the "I/O" presentation on Carmi's site, which he changes every semester.  
+Currently, the presentation is at http://www2.mta.ac.il/~carmi/Teaching/2016-7A-OS/Slides/Lec%20file.pdf (slides 13-23).
+
+###*Pipe stuff*
+
+A `pipe` is pointed to by a *reader* `file struct` and a *writer* `file struct`.  
+(Both of which exist *once*, and may be pointed to by many different procs.)
+
+The `pipe` has `readopen` and `writeopen` fields, which contain "1" as long as the *reader* and *writer* guys are still holding him open.  
+When both are "0", the `pipe` is closed.
+
+###*Moar file stuff*
+
+The kernel has an array `ftable`, which holds all the open files (and a lock to make sure two procs don't fight over a slot in the array).
+
+Files are added to `ftable` in the function `filealloc`
