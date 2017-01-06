@@ -958,4 +958,14 @@ When both are "0", the `pipe` is closed.
 
 The kernel has an array `ftable`, which holds all the open files (and a lock to make sure two procs don't fight over a slot in the array).
 
-Files are added to `ftable` in the function `filealloc`
+Files are added to `ftable` in the function `filealloc`.
+
+###*Transactions*
+
+When writing to blocks on disk (or deleting), we really don't want the machine to crash or restart, or else there'll be corrupted data.
+
+In order to alleviate our fears, we can wrap our *writing* in a *transaction* (by calling `begin_trans()` before and `commit_trans()` after).  
+A transaction ensures that the write will either be *complete* or won't be at all.
+
+A transaction is limited to a certain size, so during `writefile` we need to divide the data to managable chunks.  
+Therefore, if there's a crash in the middle of the write operation, some blocks might be written and the rest not. However, each block will be fully-written or not written at all (but no hybrid mish-mash).
