@@ -931,7 +931,8 @@ Duplicates proc's reference to file.
 ###`5419 argfd(int n, int *pfd, struct file **pf)`
 
 Gets the `n`th argument sent to the system call, as a file descriptor.  
-Returns descriptor and the struct file it points to.
+Returns descriptor and the struct file it points to.  
+(The only reason we need the file descriptor `pfd` is in case we're closing the file and need to make `ofile` point to null.)
 
 ---
 
@@ -945,14 +946,82 @@ Reads from `f` to `addr`.
 
 **5323-5329**: handle case when file is inode:
 
-  - **5324**: lock the inode (because we must)
+- **5324**: lock the inode (because we must)
   
-  - **5325**: read
+- **5325**: read
   
-  - **5326**: update offset
+- **5326**: update offset
   
-  - **5327**: unlock the inode
+- **5327**: unlock the inode
 
 Called by `sys_read`.  
+
+---
+
+###`5352 filewrite(struct file *f, char *addr, int n)`
+
+Writes from `addr` to `f`.
+
+**5358-5359**: handle case when file is pipe
+
+**5360-5386**: handle case when file is inode:
+
+- **5367-5372**: break up data to managable chunks (for transactions)
+
+- **5374-5379**: write chunk:
+
+  - **5374**: begin transaction
+
+  - **5376-5377**: write
+  
+  - **5379**: end transaction
+
+---
+
+###`5264 fileclose(struct file *f)`
+
+Decrements file reference count.  
+When no references left, actually close file.
+
+**5271-5273**: decrement ref count
+
+**5275**: keep backup of struct file, because we're about to release the lock on the file table (and anything can happen after *that*)
+
+**5278**: release file table because closing file on disk can take a long time
+
+**5280-5281**: handle case when file is pipe (needs to happen once for `read` and once for `write` descriptors of pipe for it to actually close)
+
+**5282-5286**: handle case when file is inode (using transaction because this can require writing on device)
+
+---
+
+###`5851 sys_pipe(void)`
+
+Allocates two files (read pipe and write pipe).  
+Expects a vector with two entries (from the input), in order to return the descriptors in.
+
+**5859**: allocate pipe (creates 2 file structs)
+
+**5862**: allocate slots in `ftable`, and point them to the pipe
+
+**5863-5867**: remove files in case of failure
+
+**5869-5870**: put descriptors in vector, for user code
+
+---
+
+###`5701 sys_open(void)`
+
+Opens or creates inode.
+
+**5710-5715**: create inode (on disk!) - can only create file (not directory)
+
+**5716-5724**: open inode
+
+  - **5720-5722**: if tried opening directory in *write* mode, close-n-error
+
+**5726**: create struct for inode, add it to `ftable`
+
+**5734-5738**: set file struct data
 
 ---
