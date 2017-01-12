@@ -944,7 +944,7 @@ These `file` guys have basic data that all read/writables contains, such as "typ
 
 OK, this explanation is pretty lame :(  
 You should really just see the "I/O" presentation on Carmi's site, which he changes every semester.  
-Currently, the presentation is at http://www2.mta.ac.il/~carmi/Teaching/2016-7A-OS/Slides/Lec%20file.pdf (slides 13-23).
+Currently, the presentation is at http://www2.mta.ac.il/~carmi/Teaching/2016-7A-OS/Slides/Lec%20io.pdf (slides 13-23).
 
 ###*Pipe stuff*
 
@@ -969,3 +969,36 @@ A transaction ensures that the write will either be *complete* or won't be at al
 
 A transaction is limited to a certain size, so during `writefile` we need to divide the data to managable chunks.  
 Therefore, if there's a crash in the middle of the write operation, some blocks might be written and the rest not. However, each block will be fully-written or not written at all (but no hybrid mish-mash).
+
+###*inode Stuff*
+
+xv6 considers a directory to be a file like any other.  
+Every `struct dirent` has an inode number, and a name. (If the directory is not in use, the number is 0.)
+
+The inodes are managed by the inode layer, which we will talk about later.
+
+`struct inode` has the following amongst its fields:
+
+* `uint dev` - device number
+* `uint inum` - inode number
+* `int ref` - reference count
+* `short nlink` - the number of names ('links') the inode has on the disk (kinda like a shortcut in Windows)
+* `uint size` - the size of the inode on the disk
+
+In order to open an inode, we have `namei()`.  
+In order to search for an inode, we have `dirlookup()`.
+
+Note that `dirlookup` can be supplied with an optional pointer `poff` that gets the offset of the found inode.  
+Why?  
+In case of renaming or deleting, we'll need to update the row in our parent inode. (In case of name change, change the num; in case of deletion, change `inum` to 0.)
+
+So... when we open an inode, we need to supply the inode to search in.  
+Conveniently, we actually *don't* supply an inode pointer, because we have THE CURRENT WORKING DIRECTORY which is "supplied" automatically.
+
+...Actually, that's not exactly true.  
+It *is* true if we're looking for some "a/b/c" path, but **not** for "/a/b/c".  
+In the latter case, we use the **root inode** instead of the current working directory.
+
+As you may or may not have guessed, if we have a path with a few parts (such as "a/b/c/d"), we need to loop over the parts and for each part find the matching inode.
+
+In order to split the path into parts, we use `skipelem`.
