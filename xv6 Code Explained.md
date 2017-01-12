@@ -358,7 +358,7 @@ Loops for ever and ever.
 **2477**: mark process as running
 
 **2478**: save current registers (including where to continue on scheduler) and load process's registers, handing the stage over to the process  
-(NOTE: the running process is responsible to release the process table lock (to enable interrupts) and later release it.)
+(NOTE: the running process is responsible to release the process table lock (to enable interrupts) and later re-lock it.)
 
 **2479**: now that process is switching back to scheduler, switch back to kernel registers and Page Table
 
@@ -372,7 +372,7 @@ Called by `mpmain`.
 
 ###`1773 switchuvm(struct proc *p)`
 
-Perpares kernel-stack of process (that is, makes `tr` register indirectly point to it), and loads process's Page Table to `cr3`.
+Perpares kernel-stack of process (that is, makes `%tr` register indirectly point to it), and loads process's Page Table to `%cr3`.
 
 **1776-1779**: set up `%tr` register and `SEG_TSS` section in GDT end up magically (don't ask how) referring us to top of process's kernel stack
 
@@ -1025,3 +1025,120 @@ Opens or creates inode.
 **5734-5738**: set file struct data
 
 ---
+
+###`5011 dirlookup(struct inode *dp, char *name, uint *poff)`
+
+Finds an inode *under* `dp` with name that's equal to `name`.  
+(`poff` in an optional pointer to the offset of the found inode.)
+
+**5020**: read single `struct dirent` in `dp`
+
+**5022**: check whether `inum` of current `dirent` is active
+
+**5024**: check whether name of current `dirent` equals `name`
+
+If we found the droid we're looking for:
+
+**5026-5027**: store offset in `poff` (if we supplied the optional pointer)
+
+**5028-5029**: get actual inode
+
+...And if we did not find it:
+
+**5033**: return 0
+
+---
+
+###`5115 skipelem(char *path, char *name)`
+
+A helper function that helps us take apart "long/path/names".  
+**Returns** the value of `path` *without* the first part, and sets `name` to equal the chopped off head.  
+(Ignores the first instance of "/" in the path: "**/**a/b/c" acts the same as "a/b/c".)
+
+---
+
+###`5189 namei(char *path)`
+
+Returns the inode with the matching path.  
+(If `path` begins with "/", looks in root inode. Else, looks in current working directory inode.)
+
+**5192**: ask `namex` to do the work
+
+---
+
+###`5196 nameiparent(char *path, char *name)`
+
+Returns the inode with the matching path *without the last part*.  
+(If `path` begins with "/", looks in root inode. Else, looks in current working directory inode.)
+
+**5198**: ask `namex` to do the work
+
+---
+
+###`5154 namex(char *path, int nameiparent, char *name)`
+
+Returns the inode with the matching path.  
+(If `nameiparent` is 0, finds actual inode. Else, ignores last part (for case when we want to *create* a *new* inode).)
+
+**5158-5161**: check if we need to look in root or current working directory
+
+**5163-5180**: loop over parts in path:
+
+- **5164**: `ilock` current inode, because we must
+
+- **5165-5168**: make sure we're looking at a *directory*
+
+- **5169-5173**: if we're looking for all but last (and found it), return it
+
+- **5174-5177**: try to get the next part of the path under the current inode
+
+- **5179**: set current inode to be the found path part inode
+
+**5181-5184**: if looking for all but last (and haven't found id before), return 0
+
+**5185**: happily return our found inode
+
+---
+
+###`5052 dirlink(struct inode *dp, char *name, uint inum)`
+
+Writes a new directory entry (name, inum) into the inode pointed at by `dp`.
+
+**5059-5062**: make sure name doesn't already exist in inode
+
+**5065-5070**: find empty slot in inode
+
+**5072**: prepare to write name
+
+**5073**: prepare to write inum
+
+**5074**: actually write the data (if we reached the end of the inode, `writei` will increase its size)
+
+---
+
+###`5657 create(char *path, short type, short major, short minor)`
+
+Creates and returns inode supplied in `path` (expecting `path` to exist up to its last part, which is the inode we're creating).  
+If inode already exists, opens it.
+
+**5663**: get parent of requested inode
+
+**5667-5674**: check if inode exists (and is a folder!)  
+If so, return it.  
+If exists but is not folder, return 0.
+
+**5676**: get an actual inode from the disk
+
+**5679**: lock the new inode (because we must)
+
+**5680-5682**: set some values. nlink is 1, because parent is linked to new inode
+
+**5683**: updates new values in the disk
+
+**5689**: add the two links every directory has:
+
+- "." self
+
+- ".." parent
+
+**5693**: add the new inode to parent
