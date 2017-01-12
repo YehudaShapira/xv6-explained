@@ -10,7 +10,7 @@
   
   - **setupkvm** *(sets up kernel page table)*
   
-    - **mappages** *(adds translations to page table)
+    - **mappages** *(adds translations to page table)*
     
       - **walkpgdir** *(allocates and maps page)*
       
@@ -34,7 +34,7 @@
   
   - **setupkvm** *(sets up kernel page table)*
   
-    - **mappages** *(adds translations to page table)
+    - **mappages** *(adds translations to page table)*
     
       - **walkpgdir** *(allocates and maps page)*
       
