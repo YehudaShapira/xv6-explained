@@ -1142,3 +1142,117 @@ If exists but is not folder, return 0.
 - ".." parent
 
 **5693**: add the new inode to parent
+
+---
+
+###`4654 iget(uint dev, uint inum)`
+
+Opens (and returns) inode.
+
+**4661-4670**: loop over `icache`, looking if inode was already loaded once
+
+- **4663-4667**: check if the inode is already in the cache
+
+- **4668-4669**: find first empty slot, in case we'll need to load inode to it
+
+**4673-4674**: if cache is full (and inode not there), panic (although we could have also gone to sleep till there's room)
+
+**4676-4680**: load some of the inode data to `icache`. Valid bit is set to 0, because we haven't yet read the data from the disk
+
+---
+
+###`4689 idup(struct inode *ip)`
+
+Increments reference count of inode (and returns it).
+
+**4691**: lock **`icache`** before use, because we access inode field
+
+---
+
+###`4756 iput(struct inode *ip)`
+
+Decrements reference count of inode, and closes it on the disk if this it will no longer be referenced at all.
+
+**4759**: check if:
+
+1. We're about to close the inode's last reference
+2. We're closing a valid inode
+3. There are no more names of / links to the inode (so it must be destroyed)
+
+If so:
+
+- **4761**: mark inode as busy (since there's still one reference!), just in case
+
+- **4765**: actually delete inode on disk
+
+- **4767**: update the inode (???)
+
+- **4770**: do something that isn't really needed
+
+**4772**: finally decrement the ref count
+
+---
+
+###`4603 ialloc(uint dev, short type)`
+
+Allocates a new inode *on the disk*, and then *in the memory*.
+
+**4610**: read super-block from disk.
+
+**4612**: loop over all inodes on disk:
+
+- **4613**: read block of current inode
+
+- **4614**: calculate pointer to current inode (using casting so that `+ inum%IPB` will add the correct size)
+
+- **4615**: check if inode is free. If so:
+
+  - **4616**: clear inode data
+  
+  - **4617**: set type
+  
+  - **4618**: re-write entire block, marking new inode as used (because we set type)
+  
+  - **4619**: close current block
+  
+  - **4620**: allocate inode in memory and return the *memory* inode
+
+- **4622**: close current block
+
+**4624**: no more inodes on disk?! Panic!
+
+---
+
+###`4629 iupdate(struct inode *ip)`
+
+Updates inode-on-disk from inode-on-memory `ip`.
+
+**4634**: read entire block from disk
+
+**4635**: calculate pointer to inode-on-disk (using casting so that `+ inum%IPB` will add the correct size)
+
+**4636-4641**: set inode data to copy of block that is on the memory now
+
+**4642**: re-write entire block on disk
+
+**4643**: close block
+
+---
+
+###`4703 ilock(struct inode *ip)`
+
+Locks inode, without spinning or preventing interrupts.
+
+**4711-4715**: sleep over inode until it's not busy
+
+**4717-4730**: make sure inode is still valid - affect only in-memory inode
+
+- **4718**: read entire block
+
+- **4719**: calculate pointer to inode
+
+- **4720-4725**: set data (just in case it changed meanwhile
+
+- **4726**: release block
+
+- **4727**: mark as valid
