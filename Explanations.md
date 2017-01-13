@@ -982,6 +982,7 @@ The inodes are managed by the inode layer, which we will talk about later.
 * `uint dev` - device number
 * `uint inum` - inode number
 * `int ref` - reference count
+* `int flags` - flags, such as 0x1 for I_BUSY (that is, *locked*) and 0x2 for I_VALID
 * `short nlink` - the number of names ('links') the inode has on the disk (kinda like a shortcut in Windows)
 * `uint size` - the size of the inode on the disk
 
@@ -1002,3 +1003,65 @@ In the latter case, we use the **root inode** instead of the current working dir
 As you may or may not have guessed, if we have a path with a few parts (such as "a/b/c/d"), we need to loop over the parts and for each part find the matching inode.
 
 In order to split the path into parts, we use `skipelem`.
+
+###*inode Stuff - The Inode Layer*
+
+The inode layer supplies a bunch of funcs:
+
+* `iget` - open
+* `iput` - close
+* `idup` - increments ref count
+* `ilock` - must lock inode whenever we want to access any field
+* `iunlock` - unlocks inode
+* `ialloc` - allocates inode both on disk and in memory
+* `iupdate` - update disk with whatever chanes we made to inode
+* `readi`
+* `writei`
+
+Our inode structs are saved in `icache`.  
+They are saved there the first time they are opened (but not before; they are loaded on-demand).
+
+The inodes are added to `icache` in `iget`.  
+When added, we add them *without the actual data from the disk*.  
+Why?  
+Because often we call `iget` just to see if the inode exists, and actually reading from the disk is expensive (so we do it just if we need it).
+
+###*The Disk - Reading and Writing*
+
+The disk in divided to blocks.  
+Every block on our disk is of 512 bytes; no more, no less.  
+Reading and writing to and from a block is done *just* in the beginning of a block.
+
+So how do we write (or read) only a few bytes?  
+We have a buffer layer that takes a whole block to memory, writes (or reads) our few bytes *in memory*, then - if we're writing - re-writes the entire block to the disk.
+
+The buffer layer contains the functions:
+
+* `readsb` - reads super-block. Never mind.
+* `bread(dev, sector)` reads an entire block. (function returns a `struct buf` which contains a field `data` with the actual 512 bytes of data)
+* `log_write`
+* `brlse`
+* `balloc`
+* `IBLOCK` - we'll explain in a moment:
+
+Remember `struct inode`?  
+Well, there's also `struct dinode` which represents an inode *on the disk*.  
+It's similar to the inode, but without the meta-data (such as ref, inum, etc.).
+
+`IBLOCK` is a macro that gives us the block number of an inode.  
+In order to tell *where* within the block is our inode, we can calculate (inum % IPB). IPB is the number of inodes in a block.
+
+###*ilock*
+
+As mentioned before, before accessing inode data we need to `ilock` it.
+
+We don't want to use our regular locks, because they:
+
+* disable interrupts
+
+* when trying to acquire, "spin" over lock till lock is open
+
+This wastes a lot of time.
+
+`ilock` is a *soft* lock, that doesn't do this stuff.  
+We don't disable interrupts, and instead of spinning, we do `sleep` (so we're not hogging CPU while waiting for acquiring).
