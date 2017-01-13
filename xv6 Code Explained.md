@@ -1243,9 +1243,13 @@ Updates inode-on-disk from inode-on-memory `ip`.
 
 Locks inode, without spinning or preventing interrupts.
 
-**4711-4715**: sleep over inode until it's not busy
+**4711-4715**: sleep over inode until it's not busy:
 
-**4717-4730**: make sure inode is still valid - affect only in-memory inode
+- **4712-4713**: while inode is busy, go back to sleep
+
+- **4714**: mark inode as busy
+
+**4717-4730**: make sure inode is still valid - affects only in-memory inode
 
 - **4718**: read entire block
 
@@ -1256,3 +1260,15 @@ Locks inode, without spinning or preventing interrupts.
 - **4726**: release block
 
 - **4727**: mark as valid
+
+---
+
+###`4735 iunlock(struct inode *ip)`
+
+Unlocks inode.
+
+**4741**: remove "busy" flag
+
+**4742**: wakeup all procs waiting for inode lock.
+
+---
