@@ -1272,3 +1272,72 @@ Unlocks inode.
 **4742**: wakeup all procs waiting for inode lock.
 
 ---
+
+###`5751 sys_mkdir(void)`
+
+Creates a new directory.
+
+---
+
+###`5513 sys_link(void)`
+
+Creates a new name (or *shortcut*) for a file.  
+(But not for a directory!)
+
+---
+
+###`5601 sys_unlink(void)`
+
+Destroys a name of a file or directory.
+
+---
+
+###`4902 readi(struct inode *ip, char *dst, uint off, uint n)`
+
+Actually reads data from the disk.
+
+**4907-4911**: weird stuff beyond the scope of this course
+
+**4913-4914**: offset validation
+
+**4915-4916**: uh...
+
+**4918**: for each block from offset till block where we want to finishe reading:
+
+- **4919**: read entire current block
+
+- **4920**: figure out how much to read (entire block, or just part)
+
+- **4921**: copy the how-much-to-read data to memory (buffer)
+
+- **4922**: close current block
+---
+
+###`4810 bmap(struct inode *ip, uint bn)`
+
+Returns the physical block number of `ip`'s `bn`th block.  
+If block doesn't exist, the block is allocated.
+
+**4815-4819**: handle case when block is direct
+
+- **4816**: try to get physical address
+
+- **4817**: if no physical address, allocate one
+
+If we reached here, then we know block is indirect
+
+**4824-4825**: allocate indirect block if it doesn't exist yet
+
+**4826**: read contents of indirect block
+
+**4827**: cast the contents as a vector of numbers
+
+**4828-4831**: try to get physical address
+
+- **4829**: allocate new address if needed
+
+- **4830**: write new address on the indrect block on the disk
+
+**4832**: close indirect block
+
+---
