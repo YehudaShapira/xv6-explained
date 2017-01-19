@@ -1065,3 +1065,17 @@ This wastes a lot of time.
 
 `ilock` is a *soft* lock, that doesn't do this stuff.  
 We don't disable interrupts, and instead of spinning, we do `sleep` (so we're not hogging CPU while waiting for acquiring).
+
+###*Reading from the disk*
+
+Every inode on the disk has a vector of `addrs`.  
+Every entry points at a single block on the disk.
+
+The first 12 entries are *direct* pointers.  
+The 13th points to a block that serves as vector of pointers.  
+That is, the last pointer is a pointer to pointers.
+
+It turns out there's actually a reason for having the inode data be partially direct and partially indirect:
+
+* We have the direct blocks because reading from the indirect blocks cost an extra read for each block.
+* We have the indirect blocks because the direct blocks are a waste of space for small files.
