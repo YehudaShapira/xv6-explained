@@ -854,7 +854,7 @@ Called by [`exec`](#5910-execchar-path-char-argv)
 
 ---
 
-###`2002 uva2ka(pte_t *pgdir, char *uva)`
+###`2002 uva2ka(pde_t *pgdir, char *uva)`
 
 Returns the kernel virtual address of a user virtual address.  
 Only works for addresses of pages (and not for middle of page).
