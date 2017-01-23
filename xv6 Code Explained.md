@@ -1296,13 +1296,13 @@ Destroys a name of a file or directory.
 
 Actually reads data from the disk.
 
-**4907-4911**: weird stuff beyond the scope of this course
+**4907-4911**: (weird stuff beyond the scope of this course)
 
 **4913-4914**: offset validation
 
 **4915-4916**: uh...
 
-**4918**: for each block from offset till block where we want to finishe reading:
+**4918**: for each block from offset till block where we want to finish reading:
 
 - **4919**: read entire current block
 
@@ -1311,6 +1311,56 @@ Actually reads data from the disk.
 - **4921**: copy the how-much-to-read data to memory (buffer)
 
 - **4922**: close current block
+
+---
+
+###`4952 writei(struct inode *ip, char *src, uint off, uint n)`
+
+Actually reads data from the disk.
+
+**4957-4961**: (weird stuff beyond the scope of this course)
+
+**4963-4966**: validation
+
+**4968**: for each block from offset will block where we want to finish writing:
+
+- **4969** read entire current block (we actually don't really need to do this when we're writing a whole block, but whatever)
+
+- **4970**: figure out how much to write (entire block, or just part)
+
+- **4971**: copy the how-much-to-write data to memory (buffer)
+
+- **4972**: copy buffer to disk
+
+- **4972**: close current block
+
+**4976-4979**: if the file grew because of the write, update inode's *size*
+
+---
+
+###`4856 itrunc(struct inode *ip)`
+
+Destroys inode on disk!  
+(Must be called only when inode is no longer referenced or held open by anyone.)
+
+**4862-4867**: free direct blocks (if they're allocated) and mark them as such on inode
+
+**4869**: if there are also indirect blocks:
+
+- **4870**: read the block with the indirect pointers
+
+- **4871**: cast block to int vector, for convenience
+
+- **4872-4875**: free indirect blocks (if they're allocated) - no need to mark them on indirect vector, because we'll destory him soon
+
+- **4876**: close the block with the indirect pointers
+
+- **4877**: destory the block with the (now freed) indirect pointers
+
+- **4878**: mark the indirect pointer as free on the inode
+
+**4881-4882**: update inode
+
 ---
 
 ###`4810 bmap(struct inode *ip, uint bn)`
@@ -1341,3 +1391,83 @@ If we reached here, then we know block is indirect
 **4832**: close indirect block
 
 ---
+
+###`4102 bread(uint dev, uint sector)`
+
+Gets a block from the disk.
+
+**4106**: try to get buffer from cache
+
+**4107-4108**: if buffer is not valid, ask for the actual buffer from the driver (which is the layer that *really* really reads from the disk
+
+---
+
+###`4114 bwrite(struct buf *b)`
+
+Writes a block to the disk.
+
+**4116-4117**: make sure buffer is marked as busy
+
+**4118**: mark buffer as dirty (that's our way to tell the driver to *write*)
+
+**4119**: ask driver layer to write to disk.
+
+---
+
+###`4038 binit(void)`
+
+Initialize `bcache` buffer cache.
+
+---
+
+###`4066 bget(uint dev, uint sector)`
+
+Gets a buffer from the cache.  
+If it's not there, allocate it there.
+
+**4070**: lock buffer cache
+
+**4072-4084**: search for buffer in cache
+
+- **4075**: buffer found!
+
+  - **4076-4080**: if buffer is not busy, unlock the buffer cache, mark buffer as busy, and return it
+
+  - **4081-4082**: if buffer is busy, go to sleep till it's unlocked (but will need to search again for case buffer was changed)
+
+Got here?  
+Buffer not found; allocate new buffer
+
+**4087**: loop from end of list to beginning
+
+- **4088**: check if current buff is not busy and not dirty
+  
+  - **4089-4093**: fill data, release lock, return buff
+
+---
+
+###`4125 brelse(struct buf *b)`
+
+Release buffer from being BUSY and move to head of linked list.
+
+**4130**: lock cache
+
+**4132-4137**: reposition buff to list head
+
+**4139**: mark buff as not busy
+
+**4140**: wake up anyone who might be waiting for buff
+
+**4142**: release cache lock
+
+---
+
+###`4454 balloc(uint dev)`
+
+Allocates and zeroes a block on the disk.
+
+**4461** read super block
+
+---
+
+###bfree
