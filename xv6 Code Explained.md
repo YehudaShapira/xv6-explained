@@ -1123,9 +1123,9 @@ If inode already exists, opens it.
 
 **5663**: get parent of requested inode
 
-**5667-5674**: check if inode exists (and is a folder!)  
+**5667-5674**: check if inode exists (and is a file!)  
 If so, return it.  
-If exists but is not folder, return 0.
+If exists but is not file, return 0.
 
 **5676**: get an actual inode from the disk
 
