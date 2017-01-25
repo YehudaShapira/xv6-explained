@@ -19,9 +19,9 @@ Anyways, here we go.
 When I say "kernel", I mean the operating system.
 This is the mother of all programs that hogs the computer to itself and manages all the other programs and how they access the computer resources (such as memory, registers, time (that is, who runs when), etc.).
 
-The kernel also keeps control over the "mode" bit (in the `%ps` register),
+The kernel also keeps control over the "mode" bit (in the `%cs` register),
 which marks whether current commands are running in user-mode
-(and therefore canӴ do all kinds of privileged stuff) or kernel-mode (and therefore can do whatever it wants).
+(and therefore can't do all kinds of privileged stuff) or kernel-mode (and therefore can do whatever it wants).
 
 ###*Boot*
 The processor (that is, the actual computer) does not know what operating system is installed, what it looks like, or how large it is.
@@ -30,14 +30,14 @@ So how can the processor load xv6 into the memory?
 
 The processor instruction pointer `%eip` register points - by default - to a certain memory place in the ROM, which contains a simple program that:
 
-1.	Copies the very first block (512 bytes. AKA the boot block) from the disc to the memory
-2.	Sets the PC to point to the beginning of the newly-copies data
+1.	Copies the very first block (512 bytes. AKA the boot block) from the disk to the memory
+2.	Sets the instruction pointer `%eip` to point to the beginning of the newly-copies data
 
 So what?
 
 Every operating system needs to make sure that its first 512 bytes are a small program (it has to be small; it's only 512 bytes!)
 that loads the rest of the operating system to the memory and sets the PC to whatever place it needs to be in.
-If 512 bytes arenӴ enough for this, the program can actually call a slightly larger program that can load and set up more.
+If 512 bytes aren't enough for this, the program can actually call a slightly larger program that can load and set up more.
 
 In short:
 
@@ -48,7 +48,7 @@ In short:
 
 ###*Processes*
 
-A process is the running of a program, including the programҠstate and data. The state includes such things as:
+A process is the running of a program, including the program's state and data. The state includes such things as:
 
 -	Memory the program occupied
 -	Memory contents
@@ -61,7 +61,7 @@ This is managed by the kernel. The kernel has a simple data structure for each p
 1.	Saves state of old process to memory
 2.	Loads state of new process from memory
 
-Context switch can be preemptive (i.e. the kernel decides "next guy's turn!", using the scheduler (there'll be a whole lot of talk about this scheduler guy later on)) or non-preemptive (i.e. the hardware itself decides). In non-preemptive, it is asked of programmer to make calls to the kernel once in a while, in order to let the kernel choose to let the next guy run.
+Context switch can be preemptive (i.e. the kernel decides "next guy's turn!", using the scheduler (there'll be a whole lot of talk about this scheduler guy later on)) or non-preemptive (i.e. the hardware itself decides). In non-preemptive, it is asked of the programmers to make calls to the kernel once in a while, in order to let the kernel choose to let the next guy run.
 
 Xv6 is preemptive.
 
@@ -81,9 +81,9 @@ A process can call the kernel to do `fork()`, which creates a new process, which
 
 ###*`exec()`*
 
-`Fork()` creates a new process, and leaves the parent running. `Exec()`, on the other hand, replaces the process's program with a new program. Itӳ still the same process, but with new code (and variables, stack, etc.). Registers, pid, etc. remain the same.
+`Fork()` creates a new process, and leaves the parent running. `Exec()`, on the other hand, replaces the process's program with a new program. It's still the same process, but with new code (and variables, stack, etc.). Registers, pid, etc. remain the same.
 
-It is common practice to have the child of `fork` call `exec` after making sure it is the child. So why not just make a single function that does both fork and exec together? There is a brilliant explanation for this, and I donӴ remember what it is.
+It is common practice to have the child of `fork` call `exec` after making sure it is the child. So why not just make a single function that does both fork and exec together? There is a brilliant explanation for this, and I don't remember what it is.
 
 ###*Process termination*
 
@@ -95,7 +95,7 @@ A process will be terminated if (and only if) one of the following happens:
 2.	Some other process invokes `kill()` with its pid
 3.	The process generates some exception
 
-Note that kill does not actually terminate the process. What it does is leave a mark of "You need to kill yourself" on the process, and it'll be the process itself that commits suicide (after it starts running again, when the scheduler loads it).
+Note that `kill` does not actually terminate the process. What it does is leave a mark of "You need to kill yourself" on the process, and it'll be the process itself that commits suicide (after it starts running again, when the scheduler loads it).
 
 Note also that not any process can `kill` any other process. The kernel makes sure of that.
 
@@ -104,7 +104,7 @@ until its parent (that is, the process which called for its creation) allows thi
 A process that `kill`ed itself but whose parent did not acknowledge this is called a zombie.
 
 In order to a parent to "acknowledge" its child's termination, it needs to call `wait()`.
-When it calls `wait()`, it will not continue until one of its children exists, and then it will continue.
+When it calls `wait()`, it will not continue until one of its children exits, and then it will continue.
 If there are a few children, the parent will need to call `wait` once for each child process.
 
 `Wait` returns the pid of the exited process.
@@ -120,7 +120,7 @@ However, all processes run on user-mode only; xv6 makes sure of that.
 In order to run a privileged command, a process must ask the kernel (which runs in kernel-mode, of course) to carry out the command.
 This "asking" is called a system call.
 
-Hereӳ an example of system call on Linux with x86 processor:
+Here's an example of system call on Linux with an x86 processor:
 
 ```assembly
 movl flags(%esp), %ecx
@@ -167,7 +167,7 @@ The MMU is actually comprised of two units:
 2. Paging Unit.
 
 The MMU sits on the address bus between then CPU and the memory, and decides which actual addresses the CPU accesses when it reads and writes.
-Each of the smaller units (segmenataion and paging) can be turned on or off. Note that Paging can only be turned on if Segmentation is on. (We actually won't really use the Segmentation Unit in xv6).
+Each of the smaller units (segmenataion and paging) can be turned on or off. Note that Paging can only be turned on if Segmentation is on. (We actually won't really use the Segmentation Unit in xv6. LATER EDIT: This is a lie. A LIE! We actually use it for all kinds of unwholesome tricks.)
 
 Addresses coming from CPU are called **virtual/logical addresses**. Once through the Segmentation Unit, they're called **linear addresses**. Once through the Paging Unit, they're **physical addresses**.  
 In short: CPU [virtual] -> Segmentation [linear] -> Paging [physical] -> RAM
@@ -299,7 +299,7 @@ Let's look at some sample virual address just to see how it all works:
 ###*Available pages (free!)*
 
 Processes need pages to be mapped to. Obviously, we want to make sure that we keep track of which page are available.  
-The free pages are managed by a **linked list**. This list is held by a global variable named `kmem`. Each item is s `run` struct, which contains only a pointer to the next guy.
+The free pages are managed by a **linked list**. This list is held by a global variable named `kmem`. Each item is a `run` struct, which contains only a pointer to the next guy.
 
 `kmem` also has a lock, which makes sure (we'll learn later how) that different processes don't work on the memory in the same time and mess it up. (An alternative would be to give each processor its own pages. However, that could cause some processors to run out of memory while another has spare. (There are ways to work around it.))
 
@@ -674,7 +674,7 @@ The final release is done by `scheduler` once there are no runnable processes le
 
 ###*Sleep*
 
-When a process needs a resource in order to continue (such as disc, input or whatever), it must call `sleep` where it marks itself (`proc->chan`) as waiting for the wanted event, sets its `state` to SLEEPING, and returns to `scheduler`.
+When a process needs a resource in order to continue (such as disk, input or whatever), it must call `sleep` where it marks itself (`proc->chan`) as waiting for the wanted event, sets its `state` to SLEEPING, and returns to `scheduler`.
 
 When the Event Manager (whom we never heard of yet) sees that the event occurs, it marks the proc as RUNNABLE once again.
 
@@ -760,7 +760,7 @@ Later, during `main`, we call `tvinit` which loops over the vectors array and wr
 
 ###*syscall*
 
-When user-code call a system-call, the system-call number is stored in `%eax`.  
+When user-code calls a system-call, the system-call number is stored in `%eax`.  
 So in `syscall`, we can access the system-call number via `proc->tf->eax`.  
 
 After running the system-call, we put the return value in `proc->tf->eax`; this will cause `alltraps` to pop it back to `%eax`, and then the user-code will know whether the system-call succeeded.
@@ -804,7 +804,7 @@ When we `fork` a proc, we need to copy a bunch of its data.
 We want to map *new* physical addresses, but copy the old data.  
 We want to create a *new* kernel stack.  
 We want to copy context.  
-We want to state to be RUNNABLE (and not RUNNING like parent).  
+We want the state to be RUNNABLE (and not RUNNING like parent).  
 We want a new `pid`.
 
 A lot of this stuff is already handled by `allocproc`.
@@ -813,7 +813,7 @@ The memory stuff is handled by `copyuvm`.
 
 ###*exec() #2*
 
-`exec` replaces current process with new one.
+`exec` replaces the current process with new one.
 
 Because this may fail, we don't want to destroy the current memory data until we know we succeeded.  
 In order to keep the current memory until the end, we need to create a *new* memory mapping, and only switch to it (and destroy the old mapping) at the very end.
@@ -1079,3 +1079,43 @@ It turns out there's actually a reason for having the inode data be partially di
 
 * We have the direct blocks because reading from the indirect blocks cost an extra read for each block.
 * We have the indirect blocks because the direct blocks are a waste of space for small files.
+
+###* The buffer layer*
+
+The buffer layer supplies the following functions:
+
+* `bread`
+* `bwrite`
+* `balloc`
+* `bfree`
+
+`struct buf` has the following fields:
+
+* `flags` - such as BUSY or DIRTY
+* `dev`
+* `sector` - device and block num
+* `struct buf * prev` - for linked list
+* `struct buf * next` - for linked list
+* `struct bef * qnext`
+* `uchar data[512]`
+
+All our buffers are kept in a cache, `bcache`.  
+This cache contains a spinlock (obviously), and a linked list of buffers (held in field `head`).
+
+The linked list of buffers is maintained so that the most recently used is in the head, and the least in the tail.
+
+Buffs are never removed from the cache!  
+If they're not used, they're marked as *not* busy and *not* dirty.  
+If we need a new buff (such as calling `bget` for a block that hasn't been read yet), we find a `struct buff` at the end of the list that is neither BUSY nor DIRTY, and mark it BUSY.
+
+When we call `brelse` and release a buffer, it is moved to the head of the list (and it's BUSY flag is turned off).
+
+`bcache` is initialized in `binit()`.
+
+###*The superblock and the bitmap*
+
+There is a block on the disk called the *superblock*.  
+This block is located right after the boot block, and contains meta data regarding the other blocks.
+
+There is another area on the disk called the *bitmap*.  
+For every block on the disk, there is a bit that marks whether the block is free or not.
