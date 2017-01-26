@@ -1470,4 +1470,44 @@ Allocates and zeroes a block on the disk.
 
 ---
 
-###bfree
+###`bfree`
+
+---
+
+###`idewait`
+
+---
+
+###`idestart`
+
+---
+
+###`3954 iderw(struct buf *b)`
+
+Handles a queue of blocks to write  
+(because it can receive many requests during the long time it takes the IDE to actually write stuff to the disk).
+
+**3968-3971**: append `b` to end of `idequeue`
+
+**3974-3975**: if our `b` is at the head of the list, read/write it to IDE
+
+**3978-3980**: sleep until `b` is VALID and NOT DIRTY
+
+---
+
+###`3902 ideintr(void)`
+
+Handles the interrupt from the IDE (which means the disk finished reading/writing).  
+Manages `idequeue`.
+
+**3907-3913**: get current head of `idequeue`, and move `idequeue` to next guy.
+
+- **3908-3912**: handle false alarms (which happen sometimes)
+
+- **3913**: "increment" queue
+
+**3916-3917**: read data (if that's what current buff wanted)
+
+**3920-3922**: clear buff flags and wakeup all those waiting for buff
+
+**3925-3926**: tell IDE to start running on next guy in queue
