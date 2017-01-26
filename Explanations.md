@@ -1080,7 +1080,7 @@ It turns out there's actually a reason for having the inode data be partially di
 * We have the direct blocks because reading from the indirect blocks cost an extra read for each block.
 * We have the indirect blocks because the direct blocks are a waste of space for small files.
 
-###* The buffer layer*
+###*The buffer layer*
 
 The buffer layer supplies the following functions:
 
@@ -1119,3 +1119,73 @@ This block is located right after the boot block, and contains meta data regardi
 
 There is another area on the disk called the *bitmap*.  
 For every block on the disk, there is a bit that marks whether the block is free or not.
+
+###*The driver layer*
+
+Ah, the driver layer. The guy who actually does all the dirty work.
+
+In order to actually access the disk (as well as other peripherals, such as keyboard), we have controllers.  
+Our guy is the IDE.
+
+The IDE has a bunch of *ports*, which are actually numbers (but "port" sounds a lot more computer-y that "number").  
+The processor can send/receive values to/from these ports using IN/OUT commands.  
+The IDE decides what to do for different values it is given to different ports.
+
+If we want the IDE to read (or write) from the disk, we need to tell it:
+
+1. Which disk to read from (turns out there are two)
+2. Where on the disk to read (28 bits to tell us which block)
+3. How many blocks to read
+
+Each of these needs to be sent to different OUT ports, before we send the command "read" to the port that accepts the command:
+
+* 0x1f2 - number of blocks
+* 0x1f3, 0x1f4, 0x1f5 and 0x1f6 - block number (28 bits split to 8 bits per port (0x1f6 gets only 3 bits and device number))
+* 0x1f7 - the command
+
+The IDE can only handle one single command at a time; so before we do anything, we need to check its IN 0x1f7 port (the STATUS port).  
+The left-most bit tells us if the IDE is busy (so shouldn't use).  
+The second bit tells us if the IDE is ready (so can use).
+
+The IDE has its very own RAM attached to it, which it uses to read/write.  
+(NOTE: We don't know how much is in this RAM. It depends on the controller we chose to put in our PC.)
+
+So how do we access this RAM from our code?
+
+###*Accessing this RAM from our code*
+
+In order to do this, we use OUT port 0x1f0.  
+For example:
+
+```C
+long *a (long*)b->data;
+for (int i = 0; i < 128; i++)
+	outl(0x1f0, a[i]);
+```
+ 
+Although it looks like every `long` is being written to the same place, it isn't.
+
+Same goes for reading:
+
+```C
+long *a (long*)b->data;
+for (int i = 0; i < 128; i++)
+	a[i] = inl(0x1f0);
+```
+
+Another useful parameter to send is `0` to port 0x3f6.  
+This tells the IDE to raise an interrupt when it finishes the command.  
+(Otherwise, the kernel can't tell when the read/write from/to the disk is complete.)
+
+###*Functions provided by the driver layer*
+
+- `idewait` - loops over IDE port 01xf7 until status is READY
+
+- `idestart`- *starts* requesting to read/write (whether to read or write depends on input)
+
+- `iderw` - the *real* read/write function. Handles a queue of blocks to write, because it can receive many requests during the long time it takes the IDE to actually write stuff to the disk.
+
+In order to handle the queue, the buffer layer has a variable `idequeue`.  
+This is a linked list of bufs, which are actually read/written by `ideint`, which is run whenever there is an interrupt from IDE due to IDE finishing its previous command.
+
+- `ideint` - handles "I'm finished!" interrupt from IDU and managed `idequeue`.
