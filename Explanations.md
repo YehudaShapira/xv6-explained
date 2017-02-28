@@ -1179,7 +1179,7 @@ This tells the IDE to raise an interrupt when it finishes the command.
 
 ###*Functions provided by the driver layer*
 
-- `idewait` - loops over IDE port 01xf7 until status is READY
+- `idewait` - loops over IDE port 0x1f7 until status is READY
 
 - `idestart`- *starts* requesting to read/write (whether to read or write depends on input)
 
