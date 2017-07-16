@@ -7,7 +7,7 @@ God have mercy on us.
 
 ---
 
-###`1217 main(void)`
+### `1217 main(void)`
 
 The entry point of the kernel.  
 Sets up kernel stuff and starts running the first process.
@@ -26,20 +26,20 @@ Sets up kernel stuff and starts running the first process.
 
 ---
 
-###`2764 struct run`
+### `2764 struct run`
 
 Represents a memory page.  
 A `run` points to the next available page/`run` (which is actually the *previous* page, because the first available is the last in the memory).
 
 ---
 
-###`2768 struct kmem`
+### `2768 struct kmem`
 
 Points to the head of a list of free (that is, available) pages of memory.
 
 ---
 
-###`2780 kinit1(void *vstart, void *vend)`
+### `2780 kinit1(void *vstart, void *vend)`
 
 Frees a bunch of pages.  
 Also does some locking thing (I'll elaborate once we actually learn this stuff).  
@@ -49,7 +49,7 @@ Called by [`main`](#1217-mainvoid).
 
 ---
 
-###`2788 kinit2(void *vstart, void *vend)`
+### `2788 kinit2(void *vstart, void *vend)`
 
 Frees a bunch of pages.  
 Also does some locking thing (I'll elaborate once we actually learn this stuff).  
@@ -59,7 +59,7 @@ Called by [`main`](#1217-mainvoid).
 
 ---
 
-###`2801 freerange(void *vstart, void *vend)`
+### `2801 freerange(void *vstart, void *vend)`
 
 Frees a bunch of pages.
 
@@ -73,7 +73,7 @@ Called by:
 
 ---
 
-###`2815 kfree(char *v)`
+### `2815 kfree(char *v)`
 
 Frees the (single!) page that `v` points at.  
 
@@ -101,7 +101,7 @@ Called by:
 
 ---
 
-###`2838 kalloc(void)`
+### `2838 kalloc(void)`
 
 Removes a page from `kmem`, and returns its (virtual!) address.
 
@@ -129,7 +129,7 @@ Called by:
 
 ---
 
-###`1757 kvmalloc(void)`
+### `1757 kvmalloc(void)`
 
 Builds new page table and makes `%CR3` point to it.
 
@@ -141,7 +141,7 @@ Called by [`main`](#1217-mainvoid).
 
 ---
 
-###`1728 kmap[]`
+### `1728 kmap[]`
 
 Contains data of how kernel pages should look.  
 Used by `setupkvm` for mapping.
@@ -156,7 +156,7 @@ We do not know during compliation where this will be.
 
 ---
 
-###`1737 setupkvm(void)`
+### `1737 setupkvm(void)`
 
 Sets up kernel virtual pages.  
 **Returns** page table address if successful, 0 if not.
@@ -181,7 +181,7 @@ Called by:
 
 ---
 
-###`1679 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)`
+### `1679 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)`
 
 Creates translations from *`va`* (virtual address) to *`pa`* (physical address) in existing page table `pgdir`.  
 **Returns** 0 if successful, -1 if not.
@@ -210,7 +210,7 @@ Called by:
 
 ---
 
-###`1654 walkpgdir(pde_t *pgdir, const void *va, int alloc)`
+### `1654 walkpgdir(pde_t *pgdir, const void *va, int alloc)`
 
 Looks at virtual address *`va`*,  
 finds where where it should be mapped to according to page table `pgdir`,  
@@ -258,7 +258,7 @@ Called by:
 
 ---
 
-###`1616 seginit(void)`
+### `1616 seginit(void)`
 
 Sets segmentation table so that it doesn't get in the way, for each CPU. 
 Adds extra row to each segementation table in order to guard CPU-specific data, makes `%gs` resgister point to it, and makes `proc` and `cpu` actually point to `%gs`.
@@ -273,7 +273,7 @@ Called by [`main`](#1217-mainvoid).
 
 ---
 
-###`2252 userinit(void)`
+### `2252 userinit(void)`
 
 Creates and sets up The First Process.
 
@@ -297,7 +297,7 @@ Called by [`main`](#1217-mainvoid).
 
 ---
 
-###`2205 allocproc(void)`
+### `2205 allocproc(void)`
 
 Allocates `proc` structure and sets up data on kernel stack.  
 **Returns** proc if succeeds, 0 if not.
@@ -324,7 +324,7 @@ Called by:
 
 ---
 
-###`1803 inituvm(pde_t *pgdir, char *init, uint sz)`
+### `1803 inituvm(pde_t *pgdir, char *init, uint sz)`
 
 Allocates and maps single page (4KB), and fills it with with program code.
 
@@ -342,7 +342,7 @@ Called by [`userinit`](#2252-userinitvoid).
 
 ---
 
-###`2458 scheduler(void)`
+### `2458 scheduler(void)`
 
 Loops over all processes (in each CPU), finds a runnable process, and runs it.  
 Loops for ever and ever.
@@ -370,7 +370,7 @@ Called by `mpmain`.
 
 ---
 
-###`1773 switchuvm(struct proc *p)`
+### `1773 switchuvm(struct proc *p)`
 
 Perpares kernel-stack of process (that is, makes `%tr` register indirectly point to it), and loads process's Page Table to `%cr3`.
 
@@ -386,7 +386,7 @@ Called by:
 
 ---
 
-###`2708 swtch(struct context **old, struct context *new)`
+### `2708 swtch(struct context **old, struct context *new)`
 
 Saves current register context in `old`, then loads the register context from `new`.  
 Basically gives control to new process.
@@ -411,7 +411,7 @@ Called by:
 
 ---
 
-###`2503 sched(void)`
+### `2503 sched(void)`
 
 Switches back `scheduler` to return from a process that had enough running.
 
@@ -425,7 +425,7 @@ Called by:
 
 ---
 
-###`2522 yield(void)`
+### `2522 yield(void)`
 
 Gives up the CPU from a running process.
 
@@ -441,7 +441,7 @@ Called by `trap`.
 
 ---
 
-###`2553 sleep(void *chan, struct spinlock *lk)`
+### `2553 sleep(void *chan, struct spinlock *lk)`
 
 Makes process sleep until `chan` event occurs.
 
@@ -461,7 +461,7 @@ Makes process sleep until `chan` event occurs.
 
 ---
 
-###`1555 pushcli(void)`
+### `1555 pushcli(void)`
 
 Saves state of `%eflags` register's `IF` bit (that is, the current state of "listen to interrupts?" bit),  
 increments the "how many times did we choose to ignore interrupts" counter,  
@@ -477,7 +477,7 @@ Called by:
 
 ---
 
-###`1566 popcli(void)`
+### `1566 popcli(void)`
 
 Decrements the "how many times did we choose to ignore interrupts" counter,  
 and if it reaches 0 then sets the "listen to interrups" bit to whatever it was before the very first `pushcli` was ever called.
@@ -492,7 +492,7 @@ Called by:
 
 ---
 
-###`1474 acquire(struct spinlock *lk)`
+### `1474 acquire(struct spinlock *lk)`
 
 Loops over spinlock until lock is acquired (exclusively by current CPU).
 
@@ -502,7 +502,7 @@ Loops over spinlock until lock is acquired (exclusively by current CPU).
 
 ---
 
-###`1502 release(struct spinlock *lk)`
+### `1502 release(struct spinlock *lk)`
 
 Releases spinlock from being held by current CPU.
 
@@ -512,7 +512,7 @@ Releases spinlock from being held by current CPU.
 
 ---
 
-###`3004 alltraps`
+### `3004 alltraps`
 
 Catches and prepares all interrupts for `trap`.  
 Pushes register data on stack, calls `trap` with the `stack` as a `trapframe` argument, pops register data from stack, and finally calls `iret`.
@@ -531,7 +531,7 @@ Pushes register data on stack, calls `trap` with the `stack` as a `trapframe` ar
 
 ---
 
-###`3101 trap(struct trapframe *tf)`
+### `3101 trap(struct trapframe *tf)`
 
 Handles all interrups.
 
@@ -556,7 +556,7 @@ Called by [`alltraps`](#3004-alltraps)
 
 ---
 
-###`3067 tvinit(void)`
+### `3067 tvinit(void)`
 
 Initializes the IDT table.
 
@@ -564,7 +564,7 @@ Called by [`main`](#1217-mainvoid).
 
 ---
 
-###`3079 idtinit(void)`
+### `3079 idtinit(void)`
 
 Makes `%IDTR` point at existing IDT table.
 
@@ -572,7 +572,7 @@ Called by `mpmain`
 
 ---
 
-###`3375 syscall(void)`
+### `3375 syscall(void)`
 
 Handles system-calls from user-code.
 
@@ -588,7 +588,7 @@ Called by [`trap`](#3101-trapstruct-trapframe-tf).
 
 ---
 
-###`3465 sys_sleep(void)`
+### `3465 sys_sleep(void)`
 
 System call for sleeping a certain amount of ticks.
 
@@ -606,7 +606,7 @@ Can be called by user code.
 
 ---
 
-###`2614 wakeup(void *chan)`
+### `2614 wakeup(void *chan)`
 
 Locks process table, finds all sleeping processes that are waiting for `chan`, makes them runnable, and unlocks process table.
 
@@ -614,7 +614,7 @@ Called by a lot of different functions.
 
 ---
 
-###`2603 wakeup1(void *chan)`
+### `2603 wakeup1(void *chan)`
 
 Finds all sleeping processes that are waiting for `chan`, and makes them runnable.
 
@@ -626,13 +626,13 @@ Called by:
 
 ---
 
-###`3295 argint(int n, int *ip)`
+### `3295 argint(int n, int *ip)`
 
 Gets the `n`th *integer* argument pushed onto the user-stack by user code before user asked for system-call.
 
 ---
 
-###`3267 fetchint(uint addr, int *ip)`
+### `3267 fetchint(uint addr, int *ip)`
 
 Gets the integer argument in address `addr`, and sets it in `ip`.  
 Returns 0 if successful, -1 otherwise.
@@ -647,7 +647,7 @@ Called by:
 
 ---
 
-###`2304 fork(void)`
+### `2304 fork(void)`
 
 Creates new process, copying lots from its parent, and set stack as if returning from a system-call.
 
@@ -673,7 +673,7 @@ Creates new process, copying lots from its parent, and set stack as if returning
 
 ---
 
-###`1953 copyuvm(pde_t *pgdir, uint sz)`
+### `1953 copyuvm(pde_t *pgdir, uint sz)`
 
 Creates copy of parent memory for child process.  
 Returns address of new page table.
@@ -702,7 +702,7 @@ Called by [`fork`](#2304-forkvoid)
 
 ---
 
-###`1910 freevm(pde_t *pgdir)`
+### `1910 freevm(pde_t *pgdir)`
 
 Frees a page table and all the physical memory pages (in its user part).
 
@@ -722,7 +722,7 @@ Called by:
 
 ---
 
-###`1882 deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)`
+### `1882 deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)`
 
 Deallocates user pages to bring the process size from `oldsz` to `newsz`.
 
@@ -748,7 +748,7 @@ Called by:
 
 ---
 
-###`1853 allocuvm(pde_t *pgdir, uint oldsz, uint newsz)`
+### `1853 allocuvm(pde_t *pgdir, uint oldsz, uint newsz)`
 
 Allocate page tables and physical memory to grow process from `oldsz` to `newsz`.  
 returns `newsz` if succeeded, 0 otherwise.
@@ -761,7 +761,7 @@ Called by:
 
 ---
 
-###`5910 exec(char *path, char **argv)`
+### `5910 exec(char *path, char **argv)`
 
 Replaces current process with new one.
 
@@ -835,7 +835,7 @@ Replaces current process with new one.
 
 ---
 
-###`1818 loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)`
+### `1818 loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)`
 
 Loads a `sz`-sized program section from `ip` file (in `offset` offset) to address `addr` (which is already mapped in `pgdir`).  
 Returns 0 if successful, -1 otherwise.
@@ -854,7 +854,7 @@ Called by [`exec`](#5910-execchar-path-char-argv)
 
 ---
 
-###`2002 uva2ka(pde_t *pgdir, char *uva)`
+### `2002 uva2ka(pde_t *pgdir, char *uva)`
 
 Returns the kernel virtual address of a user virtual address.  
 Only works for addresses of pages (and not for middle of page).
@@ -865,7 +865,7 @@ Only works for addresses of pages (and not for middle of page).
 
 ---
 
-###`2018 copyout(pde_t *pgdir, uint va, void *p, uint len)`
+### `2018 copyout(pde_t *pgdir, uint va, void *p, uint len)`
 
 Copies `len` bytes from `p` address to `pgdir->va` address.
 
@@ -875,7 +875,7 @@ Copies `len` bytes from `p` address to `pgdir->va` address.
 
 ---
 
-###`2354 exit(void)`
+### `2354 exit(void)`
 
 Exists current process.
 
@@ -897,28 +897,28 @@ Exists current process.
 
 ---
 
-###`5225 filealloc(void)`
+### `5225 filealloc(void)`
 
 Finds the first free slot in the global file table, and returns its *address*.  
 If there are none free, returns 0.
 
 ---
 
-###`5438 fdalloc(struct file *f)`
+### `5438 fdalloc(struct file *f)`
 
 Finds the first free slot in the process's file table, points it to `f`, and returns the index (AKA the file descriptor).  
 If no room, returns -1.
 
 ---
 
-###`5252 filedup(struct file *f)`
+### `5252 filedup(struct file *f)`
 
 Increments the reference count of `f`.  
 (Used as part of the file duplication process)
 
 ---
 
-###`5451 sys_dup(void)`
+### `5451 sys_dup(void)`
 
 Duplicates proc's reference to file.
 
@@ -928,7 +928,7 @@ Duplicates proc's reference to file.
 
 ---
 
-###`5419 argfd(int n, int *pfd, struct file **pf)`
+### `5419 argfd(int n, int *pfd, struct file **pf)`
 
 Gets the `n`th argument sent to the system call, as a file descriptor.  
 Returns descriptor and the struct file it points to.  
@@ -936,7 +936,7 @@ Returns descriptor and the struct file it points to.
 
 ---
 
-###`5315 fileread(struct file *f, char *addr, int n)`
+### `5315 fileread(struct file *f, char *addr, int n)`
 
 Reads from `f` to `addr`.
 
@@ -958,7 +958,7 @@ Called by `sys_read`.
 
 ---
 
-###`5352 filewrite(struct file *f, char *addr, int n)`
+### `5352 filewrite(struct file *f, char *addr, int n)`
 
 Writes from `addr` to `f`.
 
@@ -978,7 +978,7 @@ Writes from `addr` to `f`.
 
 ---
 
-###`5264 fileclose(struct file *f)`
+### `5264 fileclose(struct file *f)`
 
 Decrements file reference count.  
 When no references left, actually close file.
@@ -995,7 +995,7 @@ When no references left, actually close file.
 
 ---
 
-###`5851 sys_pipe(void)`
+### `5851 sys_pipe(void)`
 
 Allocates two files (read pipe and write pipe).  
 Expects a vector with two entries (from the input), in order to return the descriptors in.
@@ -1010,7 +1010,7 @@ Expects a vector with two entries (from the input), in order to return the descr
 
 ---
 
-###`5701 sys_open(void)`
+### `5701 sys_open(void)`
 
 Opens or creates inode.
 
@@ -1026,7 +1026,7 @@ Opens or creates inode.
 
 ---
 
-###`5011 dirlookup(struct inode *dp, char *name, uint *poff)`
+### `5011 dirlookup(struct inode *dp, char *name, uint *poff)`
 
 Finds an inode *under* `dp` with name that's equal to `name`.  
 (`poff` in an optional pointer to the offset of the found inode.)
@@ -1049,7 +1049,7 @@ If we found the droid we're looking for:
 
 ---
 
-###`5115 skipelem(char *path, char *name)`
+### `5115 skipelem(char *path, char *name)`
 
 A helper function that helps us take apart "long/path/names".  
 **Returns** the value of `path` *without* the first part, and sets `name` to equal the chopped off head.  
@@ -1057,7 +1057,7 @@ A helper function that helps us take apart "long/path/names".
 
 ---
 
-###`5189 namei(char *path)`
+### `5189 namei(char *path)`
 
 Returns the inode with the matching path.  
 (If `path` begins with "/", looks in root inode. Else, looks in current working directory inode.)
@@ -1066,7 +1066,7 @@ Returns the inode with the matching path.
 
 ---
 
-###`5196 nameiparent(char *path, char *name)`
+### `5196 nameiparent(char *path, char *name)`
 
 Returns the inode with the matching path *without the last part*.  
 (If `path` begins with "/", looks in root inode. Else, looks in current working directory inode.)
@@ -1075,7 +1075,7 @@ Returns the inode with the matching path *without the last part*.
 
 ---
 
-###`5154 namex(char *path, int nameiparent, char *name)`
+### `5154 namex(char *path, int nameiparent, char *name)`
 
 Returns the inode with the matching path.  
 (If `nameiparent` is 0, finds actual inode. Else, ignores last part (for case when we want to *create* a *new* inode).)
@@ -1100,7 +1100,7 @@ Returns the inode with the matching path.
 
 ---
 
-###`5052 dirlink(struct inode *dp, char *name, uint inum)`
+### `5052 dirlink(struct inode *dp, char *name, uint inum)`
 
 Writes a new directory entry (name, inum) into the inode pointed at by `dp`.
 
@@ -1116,7 +1116,7 @@ Writes a new directory entry (name, inum) into the inode pointed at by `dp`.
 
 ---
 
-###`5657 create(char *path, short type, short major, short minor)`
+### `5657 create(char *path, short type, short major, short minor)`
 
 Creates and returns inode supplied in `path` (expecting `path` to exist up to its last part, which is the inode we're creating).  
 If inode already exists, opens it.
@@ -1145,7 +1145,7 @@ If exists but is not file, return 0.
 
 ---
 
-###`4654 iget(uint dev, uint inum)`
+### `4654 iget(uint dev, uint inum)`
 
 Opens (and returns) inode.
 
@@ -1161,7 +1161,7 @@ Opens (and returns) inode.
 
 ---
 
-###`4689 idup(struct inode *ip)`
+### `4689 idup(struct inode *ip)`
 
 Increments reference count of inode (and returns it).
 
@@ -1169,7 +1169,7 @@ Increments reference count of inode (and returns it).
 
 ---
 
-###`4756 iput(struct inode *ip)`
+### `4756 iput(struct inode *ip)`
 
 Decrements reference count of inode, and closes it on the disk if this it will no longer be referenced at all.
 
@@ -1193,7 +1193,7 @@ If so:
 
 ---
 
-###`4603 ialloc(uint dev, short type)`
+### `4603 ialloc(uint dev, short type)`
 
 Allocates a new inode *on the disk*, and then *in the memory*.
 
@@ -1223,7 +1223,7 @@ Allocates a new inode *on the disk*, and then *in the memory*.
 
 ---
 
-###`4629 iupdate(struct inode *ip)`
+### `4629 iupdate(struct inode *ip)`
 
 Updates inode-on-disk from inode-on-memory `ip`.
 
@@ -1239,7 +1239,7 @@ Updates inode-on-disk from inode-on-memory `ip`.
 
 ---
 
-###`4703 ilock(struct inode *ip)`
+### `4703 ilock(struct inode *ip)`
 
 Locks inode, without spinning or preventing interrupts.
 
@@ -1263,7 +1263,7 @@ Locks inode, without spinning or preventing interrupts.
 
 ---
 
-###`4735 iunlock(struct inode *ip)`
+### `4735 iunlock(struct inode *ip)`
 
 Unlocks inode.
 
@@ -1273,26 +1273,26 @@ Unlocks inode.
 
 ---
 
-###`5751 sys_mkdir(void)`
+### `5751 sys_mkdir(void)`
 
 Creates a new directory.
 
 ---
 
-###`5513 sys_link(void)`
+### `5513 sys_link(void)`
 
 Creates a new name (or *shortcut*) for a file.  
 (But not for a directory!)
 
 ---
 
-###`5601 sys_unlink(void)`
+### `5601 sys_unlink(void)`
 
 Destroys a name of a file or directory.
 
 ---
 
-###`4902 readi(struct inode *ip, char *dst, uint off, uint n)`
+### `4902 readi(struct inode *ip, char *dst, uint off, uint n)`
 
 Actually reads data from the disk.
 
@@ -1314,7 +1314,7 @@ Actually reads data from the disk.
 
 ---
 
-###`4952 writei(struct inode *ip, char *src, uint off, uint n)`
+### `4952 writei(struct inode *ip, char *src, uint off, uint n)`
 
 Actually reads data from the disk.
 
@@ -1338,7 +1338,7 @@ Actually reads data from the disk.
 
 ---
 
-###`4856 itrunc(struct inode *ip)`
+### `4856 itrunc(struct inode *ip)`
 
 Destroys inode on disk!  
 (Must be called only when inode is no longer referenced or held open by anyone.)
@@ -1363,7 +1363,7 @@ Destroys inode on disk!
 
 ---
 
-###`4810 bmap(struct inode *ip, uint bn)`
+### `4810 bmap(struct inode *ip, uint bn)`
 
 Returns the physical block number of `ip`'s `bn`th block.  
 If block doesn't exist, the block is allocated.
@@ -1392,7 +1392,7 @@ If we reached here, then we know block is indirect
 
 ---
 
-###`4102 bread(uint dev, uint sector)`
+### `4102 bread(uint dev, uint sector)`
 
 Gets a block from the disk.
 
@@ -1402,7 +1402,7 @@ Gets a block from the disk.
 
 ---
 
-###`4114 bwrite(struct buf *b)`
+### `4114 bwrite(struct buf *b)`
 
 Writes a block to the disk.
 
@@ -1414,13 +1414,13 @@ Writes a block to the disk.
 
 ---
 
-###`4038 binit(void)`
+### `4038 binit(void)`
 
 Initialize `bcache` buffer cache.
 
 ---
 
-###`4066 bget(uint dev, uint sector)`
+### `4066 bget(uint dev, uint sector)`
 
 Gets a buffer from the cache.  
 If it's not there, allocate it there.
@@ -1446,7 +1446,7 @@ Buffer not found; allocate new buffer
 
 ---
 
-###`4125 brelse(struct buf *b)`
+### `4125 brelse(struct buf *b)`
 
 Release buffer from being BUSY and move to head of linked list.
 
@@ -1462,7 +1462,7 @@ Release buffer from being BUSY and move to head of linked list.
 
 ---
 
-###`4454 balloc(uint dev)`
+### `4454 balloc(uint dev)`
 
 Allocates and zeroes a block on the disk.
 
@@ -1470,19 +1470,19 @@ Allocates and zeroes a block on the disk.
 
 ---
 
-###`bfree`
+### `bfree`
 
 ---
 
-###`idewait`
+### `idewait`
 
 ---
 
-###`idestart`
+### `idestart`
 
 ---
 
-###`3954 iderw(struct buf *b)`
+### `3954 iderw(struct buf *b)`
 
 Handles a queue of blocks to write  
 (because it can receive many requests during the long time it takes the IDE to actually write stuff to the disk).
@@ -1495,7 +1495,7 @@ Handles a queue of blocks to write
 
 ---
 
-###`3902 ideintr(void)`
+### `3902 ideintr(void)`
 
 Handles the interrupt from the IDE (which means the disk finished reading/writing).  
 Manages `idequeue`.
