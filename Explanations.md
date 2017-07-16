@@ -1,9 +1,9 @@
-###The point of this document:
+### The point of this document:
 
 I'm actually not so sure.
 I think the point is to explain why xv6 does stuff, in broad strokes, as a complement to the explanations of the actual code of xv6.
 
-###Important-ish note:
+### Important-ish note:
 
 Often, I'll refer to things that haven't been explained yet.
 Just keep in mind that not everything is explained at first, and that's okay.
@@ -15,7 +15,7 @@ Anyways, here we go.
 
 ---
 
-###*Kernel*
+### *Kernel*
 When I say "kernel", I mean the operating system.
 This is the mother of all programs that hogs the computer to itself and manages all the other programs and how they access the computer resources (such as memory, registers, time (that is, who runs when), etc.).
 
@@ -23,7 +23,7 @@ The kernel also keeps control over the "mode" bit (in the `%cs` register),
 which marks whether current commands are running in user-mode
 (and therefore can't do all kinds of privileged stuff) or kernel-mode (and therefore can do whatever it wants).
 
-###*Boot*
+### *Boot*
 The processor (that is, the actual computer) does not know what operating system is installed, what it looks like, or how large it is.
 
 So how can the processor load xv6 into the memory?
@@ -46,7 +46,7 @@ In short:
 3.	Beginning of OS code loads the rest of the code
 4.	Now hear the word of the Lord!
 
-###*Processes*
+### *Processes*
 
 A process is the running of a program, including the program's state and data. The state includes such things as:
 
@@ -67,7 +67,7 @@ Xv6 is preemptive.
 
 Processes are created by the kernel, after another process asks it to. Therefore, the kernel needs to run the first process itself, in order to create someone who will ask for new processes to be created.
 
-###*`fork()`*
+### *`fork()`*
 
 Every process has a process ID (or pid for short).
 
@@ -79,13 +79,13 @@ A process can call the kernel to do `fork()`, which creates a new process, which
  -	In the parent process - the new pid
  -	In case of failure - some negative error code
 
-###*`exec()`*
+### *`exec()`*
 
 `Fork()` creates a new process, and leaves the parent running. `Exec()`, on the other hand, replaces the process's program with a new program. It's still the same process, but with new code (and variables, stack, etc.). Registers, pid, etc. remain the same.
 
 It is common practice to have the child of `fork` call `exec` after making sure it is the child. So why not just make a single function that does both fork and exec together? There is a brilliant explanation for this, and I don't remember what it is.
 
-###*Process termination*
+### *Process termination*
 
 Trigger warning: sad stuff ahead. And also zombies.
 
@@ -112,7 +112,7 @@ If there are a few children, the parent will need to call `wait` once for each c
 What happens if a parent process `exit`s before its children?
 Its children become orphans, and the The First Process (whose pid is 1) will make them His children.
 
-###*System calls*
+### *System calls*
 
 Many commands will only run if the "mode" bit is set to kernel-mode.
 However, all processes run on user-mode only; xv6 makes sure of that.
@@ -132,7 +132,7 @@ int $128    ; invokes system call. Always 128!
 
 The kernel has a vector with a bunch of pointers to functions (Yay, pointers!).
 
-###*Addresses*
+### *Addresses*
 
 This one's a biggie. Hold on to your seatbelts, kids.
 
@@ -240,7 +240,7 @@ Thus, a virtual address can be broken down like so:
 * `i1` is the index of a second table
 * `offset` is the offset
 
-###*Addresses - double mapping*
+### *Addresses - double mapping*
 
 Every single physical address is mapped by the kernel to virtual address by adding KERNBASE to it.
 
@@ -256,7 +256,7 @@ Likewise, the kernel can determine *its* virtual address of *any* physical addre
 
 KERNBASE = 0x80000000.
 
-###*`1217 main`*
+### *`1217 main`*
 
 In the beginning, we know that from `[0x0000 0000]` till `[0x0009 FFFF]` there are 640KB RAM.  
 From `[0x000A 0000]` till `[0x000F FFFF]` is the "I/O area" (384KB), which contains ROM and stuff we must not use (it belongs to the hardware).  
@@ -296,7 +296,7 @@ By the time xv6 loads (and starts running `main`), we have the following setup:
 Let's look at some sample virual address just to see how it all works:  
 `[0x8024 56AB]` -> `[1000 0000 0010 0100 0101 0110 1010 1011]` -> `[1000 0000 00` (that's row 512) `10 0100 0101` (that's row 581) `0110 1010 1011` (and that's the offset) `]` -> row 581 in the 2nd-level table will turn `[1000 0000 0010 0100 0101...]` to `[0000 0000 0010 0100 0101...]`, which is exactly according to the mapping rule we mentioned a few lines ago.
 
-###*Available pages (free!)*
+### *Available pages (free!)*
 
 Processes need pages to be mapped to. Obviously, we want to make sure that we keep track of which page are available.  
 The free pages are managed by a **linked list**. This list is held by a global variable named `kmem`. Each item is a `run` struct, which contains only a pointer to the next guy.
@@ -310,7 +310,7 @@ In `kfree`, we perform the following 3 sanity checks:
 * We're not trying to free part of the kernel
 * We're not pushing beyond the edge of the physical memory
 
-###*Building a page table*
+### *Building a page table*
 
 Let's examine what needs to be done (not necessarily in xv6) in order to make our very own paging table.
 
@@ -338,7 +338,7 @@ ANOTHER NOTE: What if two different *va*->*vp* rules clash? xv6 will crash (deli
 
 **For more details about how the kernel builds its mapping tables, please refer to [xv6 Code Explained.md] (`kvmalloc`).**
 
-###*Moar GDT stuff!*
+### *Moar GDT stuff!*
 
 Remember how we said we'd make sure GDT has `base=0` (so it won't alter addresses) and `limit=max` (so it won't interfere)?  
 Well, it turns out the hardware still uses the GDT to check various user-mode/kernel-mode stuff.
@@ -355,7 +355,7 @@ There is a macro named `SEG`, which helps us build all these annoying bits.
 Okay, that's enough of this.  
 Don't pretend you understand, because you don't and it doesn't matter.
 
-###*Per-CPU variables*
+### *Per-CPU variables*
 
 We've got an array of CPU data, `cpus`.
 
@@ -426,7 +426,7 @@ Note also that this means that calling `cpu->cpu->cpu->cpu` is the same as calli
 **Important note**: `GS` can be changed by code in user-mode.  
 So, every time there is an interrupt, we reload our value to `%gs` using `loadgs(SEG_KCPU << 3);`. (Don't worry, we back up all user-mode's registers beforehand.)
 
-###*Processes*
+### *Processes*
 
 Every process has a struct `proc` that holds a bunch of its data:
 
@@ -453,7 +453,7 @@ Running -> Runnable
 
 The processes are held in a struct named `ptable`, who has a vector of proceses named `proc`.
 
-###*Preparing the First Process*
+### *Preparing the First Process*
 
 When running The First Process, we do the following in `userinit`:
 
@@ -529,13 +529,13 @@ exit:
 So we have this code, but we need to load it during `inituvm`.  
 This is done in the script in the **initcode.S** file, which compiles that code to binary and shoves it all into the data section, with the exact same labels that are used in `inituvm`.
 
-###*Actually running the First Process*
+### *Actually running the First Process*
 
 This is done in `mpmain`, which calls the scheduler, which loops over process tables and runs processes.
 
 Since at this point there's only one process at this point, it's the only one that'll run.
 
-###*Accessing process's kernel stack during interrupt*
+### *Accessing process's kernel stack during interrupt*
 
 When we're in user-mode and there's an interrupt, the kernel needs its own stack on the process to push real data onto it (before leaving the process).
 
@@ -550,12 +550,12 @@ The hardware supports this, with a magnificent Rube Goldberg machine:
 
 So during `switchuvm` we set up this whole thing, so that in due time the kernel (and only the kernel) can access its stack on the proc.
 
-###*Locks - the problem*
+### *Locks - the problem*
 
 Because we have multiple CPUs, we need to make sure two CPUs don't both grab the same data (such as the same `proc` struct during `allocproc`, or the same page during `kalloc`).  
 This could (theoretically) even happen with a single CPU, because of interrupts.
 
-###*Locks - a possible solution (just for interrupts)*
+### *Locks - a possible solution (just for interrupts)*
 
 We can block interrupts (!) from happening by setting the `IF` bit in `%eflags` register to 0.  
 This can be controlled (in kernel-mode, yes?) using the assembly commands:
@@ -590,7 +590,7 @@ function a() {
 }
 ```
 
-###*Locks - an actual solution (just for interrupts)*
+### *Locks - an actual solution (just for interrupts)*
 
 **Solution**: Keep track of how many times we called `cli()`, so that `sti()` only releases if down to 0.  
 We can do this by wrapping all `cli()`s with `pushcli()` and `sti()`s with `popcli()`.  
@@ -613,7 +613,7 @@ function a() {
 
 (Note that each CPU runs `pushcli()` and `popcli()` separately for each CPU.)
 
-###*Locks - an actual solution (for multiple CPUs)*
+### *Locks - an actual solution (for multiple CPUs)*
 
 There is a magical assembly word, `lock`.  
 Usage example:
@@ -660,7 +660,7 @@ release (struct spinlock*lk) {
 }
 ```
 
-###*How locks are managed during `scheduler`*
+### *How locks are managed during `scheduler`*
 
 When `scheduler` searches for RUNNABLE procs, it `acquire`s a lock on the process table.  
 This is in order to make sure that `scheduler`s on *other* CPUs don't grab the same process we just did.
@@ -672,7 +672,7 @@ Each lock is re-released by the next process that runs, and then re-re-locked.
 
 The final release is done by `scheduler` once there are no runnable processes left.
 
-###*Sleep*
+### *Sleep*
 
 When a process needs a resource in order to continue (such as disk, input or whatever), it must call `sleep` where it marks itself (`proc->chan`) as waiting for the wanted event, sets its `state` to SLEEPING, and returns to `scheduler`.
 
@@ -685,7 +685,7 @@ It replaces the locking from *that* lock to the process table (unless they are t
 Once done, it releases the process table and re-locks the supplied `spinlock`.  
 We'll get back to you folks on this one once we understand why on earth this is needed.
 
-###*Interrupts - CPU*
+### *Interrupts - CPU*
 
 There are two basic types of interrupts: internal (thrown by CPU) and external (like keyboard strokes).
 
@@ -728,7 +728,7 @@ If the interrups occurs during **user-mode**, the CPU performs the following:
 **Answer**: In both cases, we need to first pop `%eip`, `%cs` and `%eflags`.  
 Having done that, we can look at the two right-most bits of `%cs` to see whether we were in user- or kernel-mode before the interrupt! Hurray!
 
-###*Interrups - xv6*
+### *Interrups - xv6*
 
 In xv6, all interrups are handled by a *single* C function `trap`.
 
@@ -758,7 +758,7 @@ The code parts for the different interrupts are labelled `vector0`, `vector1`, .
 After generating the vectors, the script creates an array (called - surprise, surprise - "vectors").  
 Later, during `main`, we call `tvinit` which loops over the vectors array and writes the data in the IDT table.
 
-###*syscall*
+### *syscall*
 
 When user-code calls a system-call, the system-call number is stored in `%eax`.  
 So in `syscall`, we can access the system-call number via `proc->tf->eax`.  
@@ -769,7 +769,7 @@ The system-call numbers are saved as constants in syscall.h file.
 
 Then we have a vector that maps each constant to its appropriate function. This vector is used in `syscall` function in order to execute the system-call.
 
-###*`sleep` system-call*
+### *`sleep` system-call*
 
 There is a global variable called `ticks`.
 
@@ -790,7 +790,7 @@ movl $SYS_sleep, %eax
 int $64
 ```
 
-###*Getting arguments in system-calls*
+### *Getting arguments in system-calls*
 
 In the example of `sleep`, the argument (how many ticks to wait) is stored on the **user**-stack.
 
@@ -798,7 +798,7 @@ This is accessed via `proc->tf->esp + 4` (the +4 is to skip the empty word, whic
 
 Because this the data is placed on the stack by *user code* (which is pointed at by `%esp`), we need to check that the user didn't set `%esp` to point at some invalid address! We do this in `fetchint` function.
 
-###*fork() #2*
+### *fork() #2*
 
 When we `fork` a proc, we need to copy a bunch of its data.  
 We want to map *new* physical addresses, but copy the old data.  
@@ -811,7 +811,7 @@ A lot of this stuff is already handled by `allocproc`.
 
 The memory stuff is handled by `copyuvm`.
 
-###*exec() #2*
+### *exec() #2*
 
 `exec` replaces the current process with new one.
 
@@ -827,7 +827,7 @@ The four stages of `exec`:
 
 In order for `exec` to run the file it's told to run, the file needs to be in ELF format.
 
-###*ELF*
+### *ELF*
 
 Executable and Linkable Format.
 
@@ -868,14 +868,14 @@ The kernel treats the data with caution, and fails the `exec` if there are any e
 
 The kernel needs to loop and copy the memory, allocating new memory if either 1) we need more memory or 2) `vaddr` is beyond what is already allocated. This is done using `allocuvm`.
 
-###*`exec` - guard page*
+### *`exec` - guard page*
 
 After `exec` loads da codes, it allocates another page for the user-stack.
 
 **Problem**: Stack goes to *lower* addresses as it fills up; eventually, it'll overrun the code-n-data!  
 **Solution**: Add guard page, with user-mode bit cleared. That way, user-code will get an error if StackOverflow.
 
-###*`exec` - pushing arguments to new process*
+### *`exec` - pushing arguments to new process*
 
 New process expects the following to be on the user-stack:
 
@@ -906,7 +906,7 @@ Note also that we don't know in advance how many arguments there are and how lon
 Therefore, our code must first place the arguments stuff, and only afterwards copy `argc`, `argv` and return address.  
 *Therefore*, we save `argc` & `argv` & return address to a temporary variable `ustack`, which we copy to actual stack at the end of the argument pushing.
  
-###*I/O*
+### *I/O*
 
 xv6 supplies the following system-call functions for files:
 
@@ -946,7 +946,7 @@ OK, this explanation is pretty lame :(
 You should really just see the "I/O" presentation on Carmi's site, which he changes every semester.  
 Currently, the presentation is at http://www2.mta.ac.il/~carmi/Teaching/2016-7A-OS/Slides/Lec%20io.pdf (slides 13-23).
 
-###*Pipe stuff*
+### *Pipe stuff*
 
 A `pipe` is pointed to by a *reader* `file struct` and a *writer* `file struct`.  
 (Both of which exist *once*, and may be pointed to by many different procs.)
@@ -954,13 +954,13 @@ A `pipe` is pointed to by a *reader* `file struct` and a *writer* `file struct`.
 The `pipe` has `readopen` and `writeopen` fields, which contain "1" as long as the *reader* and *writer* guys are still holding him open.  
 When both are "0", the `pipe` is closed.
 
-###*Moar file stuff*
+### *Moar file stuff*
 
 The kernel has an array `ftable`, which holds all the open files (and a lock to make sure two procs don't fight over a slot in the array).
 
 Files are added to `ftable` in the function `filealloc`.
 
-###*Transactions*
+### *Transactions*
 
 When writing to blocks on disk (or deleting), we really don't want the machine to crash or restart, or else there'll be corrupted data.
 
@@ -970,7 +970,7 @@ A transaction ensures that the write will either be *complete* or won't be at al
 A transaction is limited to a certain size, so during `writefile` we need to divide the data to managable chunks.  
 Therefore, if there's a crash in the middle of the write operation, some blocks might be written and the rest not. However, each block will be fully-written or not written at all (but no hybrid mish-mash).
 
-###*inode Stuff*
+### *inode Stuff*
 
 xv6 considers a directory to be a file like any other.  
 Every `struct dirent` has an inode number, and a name. (If the directory is not in use, the number is 0.)
@@ -1004,7 +1004,7 @@ As you may or may not have guessed, if we have a path with a few parts (such as 
 
 In order to split the path into parts, we use `skipelem`.
 
-###*inode Stuff - The Inode Layer*
+### *inode Stuff - The Inode Layer*
 
 The inode layer supplies a bunch of funcs:
 
@@ -1026,7 +1026,7 @@ When added, we add them *without the actual data from the disk*.
 Why?  
 Because often we call `iget` just to see if the inode exists, and actually reading from the disk is expensive (so we do it just if we need it).
 
-###*The Disk - Reading and Writing*
+### *The Disk - Reading and Writing*
 
 The disk in divided to blocks.  
 Every block on our disk is of 512 bytes; no more, no less.  
@@ -1051,7 +1051,7 @@ It's similar to the inode, but without the meta-data (such as ref, inum, etc.).
 `IBLOCK` is a macro that gives us the block number of an inode.  
 In order to tell *where* within the block is our inode, we can calculate (inum % IPB). IPB is the number of inodes in a block.
 
-###*ilock*
+### *ilock*
 
 As mentioned before, before accessing inode data we need to `ilock` it.
 
@@ -1066,7 +1066,7 @@ This wastes a lot of time.
 `ilock` is a *soft* lock, that doesn't do this stuff.  
 We don't disable interrupts, and instead of spinning, we do `sleep` (so we're not hogging CPU while waiting for acquiring).
 
-###*Reading from the disk*
+### *Reading from the disk*
 
 Every inode on the disk has a vector of `addrs`.  
 Every entry points at a single block on the disk.
@@ -1080,7 +1080,7 @@ It turns out there's actually a reason for having the inode data be partially di
 * We have the direct blocks because reading from the indirect blocks cost an extra read for each block.
 * We have the indirect blocks because the direct blocks are a waste of space for small files.
 
-###*The buffer layer*
+### *The buffer layer*
 
 The buffer layer supplies the following functions:
 
@@ -1112,7 +1112,7 @@ When we call `brelse` and release a buffer, it is moved to the head of the list 
 
 `bcache` is initialized in `binit()`.
 
-###*The superblock and the bitmap*
+### *The superblock and the bitmap*
 
 There is a block on the disk called the *superblock*.  
 This block is located right after the boot block, and contains meta data regarding the other blocks.
@@ -1120,7 +1120,7 @@ This block is located right after the boot block, and contains meta data regardi
 There is another area on the disk called the *bitmap*.  
 For every block on the disk, there is a bit that marks whether the block is free or not.
 
-###*The driver layer*
+### *The driver layer*
 
 Ah, the driver layer. The guy who actually does all the dirty work.
 
@@ -1152,7 +1152,7 @@ The IDE has its very own RAM attached to it, which it uses to read/write.
 
 So how do we access this RAM from our code?
 
-###*Accessing this RAM from our code*
+### *Accessing this RAM from our code*
 
 In order to do this, we use OUT port 0x1f0.  
 For example:
@@ -1177,7 +1177,7 @@ Another useful parameter to send is `0` to port 0x3f6.
 This tells the IDE to raise an interrupt when it finishes the command.  
 (Otherwise, the kernel can't tell when the read/write from/to the disk is complete.)
 
-###*Functions provided by the driver layer*
+### *Functions provided by the driver layer*
 
 - `idewait` - loops over IDE port 0x1f7 until status is READY
 
