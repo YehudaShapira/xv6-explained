@@ -30,8 +30,8 @@ So how can the processor load xv6 into the memory?
 
 The processor instruction pointer `%eip` register points - by default - to a certain memory place in the ROM, which contains a simple program that:
 
-1.	Copies the very first block (512 bytes. AKA the boot block) from the disk to the memory
-2.	Sets the instruction pointer `%eip` to point to the beginning of the newly-copies data
+1. Copies the very first block (512 bytes. AKA the boot block) from the disk to the memory
+2. Sets the instruction pointer `%eip` to point to the beginning of the newly-copies data
 
 So what?
 
@@ -41,25 +41,25 @@ If 512 bytes aren't enough for this, the program can actually call a slightly la
 
 In short:
 
-1.	`%eip` points to hard-coded ROM code
-2.	ROM code loads beginning of OS code
-3.	Beginning of OS code loads the rest of the code
-4.	Now hear the word of the Lord!
+1. `%eip` points to hard-coded ROM code
+2. ROM code loads beginning of OS code
+3. Beginning of OS code loads the rest of the code
+4. Now hear the word of the Lord!
 
 ### *Processes*
 
 A process is the running of a program, including the program's state and data. The state includes such things as:
 
--	Memory the program occupied
--	Memory contents
--	Register values
--	Files
+- Memory the program occupied
+- Memory contents
+- Register values
+- Files
 - Kernel structures
 
 This is managed by the kernel. The kernel has a simple data structure for each process, organized in some list. The kernel juggles between the processes, using a context switch, which:
 
-1.	Saves state of old process to memory
-2.	Loads state of new process from memory
+1. Saves state of old process to memory
+2. Loads state of new process from memory
 
 Context switch can be preemptive (i.e. the kernel decides "next guy's turn!", using the scheduler (there'll be a whole lot of talk about this scheduler guy later on)) or non-preemptive (i.e. the hardware itself decides). In non-preemptive, it is asked of the programmers to make calls to the kernel once in a while, in order to let the kernel choose to let the next guy run.
 
@@ -73,11 +73,11 @@ Every process has a process ID (or pid for short).
 
 A process can call the kernel to do `fork()`, which creates a new process, which is entirely identical to the parent process (registers, memory and everything). The only differences are:
 
--	The pid
--	The value returned from fork:
- -	In the new process - 0
- -	In the parent process - the new pid
- -	In case of failure - some negative error code
+- The pid
+- The value returned from fork:
+- In the new process - 0
+- In the parent process - the new pid
+- In case of failure - some negative error code
 
 ### *`exec()`*
 
@@ -91,9 +91,9 @@ Trigger warning: sad stuff ahead. And also zombies.
 
 A process will be terminated if (and only if) one of the following happens:
 
-1.	The process invokes `exit()`
-2.	Some other process invokes `kill()` with its pid
-3.	The process generates some exception
+1. The process invokes `exit()`
+2. Some other process invokes `kill()` with its pid
+3. The process generates some exception
 
 Note that `kill` does not actually terminate the process. What it does is leave a mark of "You need to kill yourself" on the process, and it'll be the process itself that commits suicide (after it starts running again, when the scheduler loads it).
 
@@ -163,7 +163,6 @@ Its real name is the MMU (Memory Management Unit), for some reason.
 The MMU is actually comprised of two units:
 
 1. Segmentation Unit
-
 2. Paging Unit.
 
 The MMU sits on the address bus between then CPU and the memory, and decides which actual addresses the CPU accesses when it reads and writes.
@@ -198,7 +197,7 @@ The Segmentation Unit receives a logical address and uses the index to look at t
 * If the logical address is greater than the `Limit`, crash!
 * Else, the Segmentation adds the `Base` to the logical address, and out comes a linear address.
 
-Note: In the past, the Segmentation Unit was used in order to make sure different processes had their own memory. For example, they could do this by making sure that each time the kernel changes a process, its segmentation regiesters would all point to an index that "belongs" to that process (and each row in the GDT would contain appropriate data). Another way this could be done would be by maintaining a seperate GDT for each process. Or maintaining a single row in the GDT and updating it each time we switch a process. There is no single correct way.
+Note: In the past, the Segmentation Unit was used in order to make sure different processes had their own memory. For example, they could do this by making sure that each time the kernel changes a process, its segmentation registers would all point to an index that "belongs" to that process (and each row in the GDT would contain appropriate data). Another way this could be done would be by maintaining a seperate GDT for each process. Or maintaining a single row in the GDT and updating it each time we switch a process. There is no single correct way.
 
 Note that all the addresses used by each process must be consecutive (along the physical memory).
 
@@ -477,7 +476,7 @@ When we return from an interrupt (or, in our case, start the process for the fir
 4. ...Trapret which pops another whole bunch of values from the stack to the registers
 5. And so on. We end up with all registers holding good values, and `%eip` pointing to 0.
 
-###*The First Process*
+### *The First Process*
 
 All it does it execute the program "init" (with the arguments {"/init", 0} (the 0 is to mark the end of the list)).
 
@@ -1051,7 +1050,7 @@ It's similar to the inode, but without the meta-data (such as ref, inum, etc.).
 `IBLOCK` is a macro that gives us the block number of an inode.  
 In order to tell *where* within the block is our inode, we can calculate (inum % IPB). IPB is the number of inodes in a block.
 
-### *ilock*
+### *`ilock`*
 
 As mentioned before, before accessing inode data we need to `ilock` it.
 
